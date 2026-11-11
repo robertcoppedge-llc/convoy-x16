@@ -14,5 +14,5 @@ if not exist "%EMU%" (
 )
 mkdir boot 2>nul
 copy /Y build\CONVOY.PRG boot\CONVOY.PRG >nul
-start "" "%EMU%" -rom "%EMUDIR%\rom.bin" -prg "%~dp0boot\CONVOY.PRG" -run -scale 2 -fsroot "%~dp0boot"
+start "" "%EMU%" -rom "%EMUDIR%\rom.bin" -netcard -prg "%~dp0boot\CONVOY.PRG" -run -scale 2 -fsroot "%~dp0boot"
 endlocal

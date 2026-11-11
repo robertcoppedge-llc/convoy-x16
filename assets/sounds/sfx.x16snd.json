@@ -5,7 +5,7 @@
   "resource": "sfx",
   "name": "convoy",
   "firstVoice": 2,
-  "channels": 2,
+  "channels": 4,
   "fixed": true,
   "immediate": true,
   "effects": [
@@ -37,6 +37,37 @@
           "len": 3,
           "pri": 1,
           "ch": 1
+        }
+      ]
+    },
+    {
+      "name": "ping",
+      "parts": [
+        {
+          "f": 2200,
+          "df": -180,
+          "vol": 48,
+          "dv": 4,
+          "wave": "pulse",
+          "pulseWidth": 30,
+          "len": 10,
+          "pri": 2,
+          "ch": 2
+        }
+      ]
+    },
+    {
+      "name": "boom",
+      "parts": [
+        {
+          "f": 180,
+          "df": -8,
+          "vol": 63,
+          "dv": 3,
+          "wave": "noise",
+          "len": 18,
+          "pri": 3,
+          "ch": 3
         }
       ]
     }

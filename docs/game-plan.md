@@ -99,7 +99,17 @@ The contact should hint at the hull. A small, fast dive reads as a II. A loud bo
 
 ## Escorts and merchants
 
-One escort hull (a Hunt-type) and two merchant hulls (Liberty and tanker). Six merchants in two columns of three. The starboard after ship is the tanker. The three escorts that do not have the conn hold station: ahead, port beam, starboard beam, and astern of a fixed convoy center. `1`–`4` moves the conn. The wing that just lost it steers back onto its station at full, then drops to the convoy's half ahead once it is inside eight pixels.
+One escort hull (a Hunt-type) and two merchant hulls (Liberty and tanker). Six merchants in two columns of three. The starboard after ship is the tanker.
+
+The escort who has the conn takes the wheel and the telegraph. `[` and `]` (or `1`–`4`) move the conn. Each escort also carries an order, set with `P`, `H`, or `A` while she has the conn. When you cycle off her, she carries that order out. The ship you are steering ignores her order until you leave.
+
+- **Patrol.** Her screen station: ahead, port beam, starboard beam, or astern. On station she steams with the convoy.
+- **Hunt.** Full ahead toward the last sonar or visual contact. With no contact she searches ahead of the convoy, port then starboard.
+- **Attack.** Flank toward that contact, and she drops a depth charge when she reaches it.
+
+## Wolfpack, later
+
+The U-boat player is one boat in this demo. A later scenario lets that player command a pack the same way the escort assigns ships: one boat on the conn, the others on attack or shadow stations. Not in this build.
 
 ## Weapons
 
@@ -120,9 +130,9 @@ VERA PSG and the YM2151 are mono, so bearing is drawn. Loudness is volume. An of
 This build:
 
 - Voice 0 is a triangle drone whose pitch follows the conn's telegraph. Stop is silence.
-- The telegraph bell and a short helm tick are sound-cli effects on voices 2 and 3 (`assets/sounds/sfx.x16snd.json`).
+- The telegraph bell, helm tick, sonar ping, and depth-charge boom are sound-cli effects on voices 2–5 (`assets/sounds/sfx.x16snd.json`).
 
-Still to add: enemy screws (rhythm hints at the class), sonar ping and return, charge boom, shell splash, torpedo hit, alarm bell, hull creak under depth.
+Still to add: enemy screws (rhythm hints at the class), a sonar return, shell splash, alarm bell, hull creak under depth.
 
 ## Link
 
@@ -132,29 +142,29 @@ The emulator already has the port. `-netcard` puts a Zimodem UART at `$9FE0`, an
 
 Packets stay under 32 bytes in play. A snapshot is a few hundred bytes and travels only after a desync.
 
-This build has the checksum and a deterministic tick. It does not open the UART yet.
+`tools/relay.py` is that relay. It listens on port 6416 and pipes the two sides together. The game dials with `ATD` on the netcard. Orders are ASCII hex so a payload byte is never `+`.
 
 ## What this build does
 
 `src/game.c` is the sim, with no VERA and no KERNAL, so `test-win.cmd` can link it on the host.
 
-- Four escorts, five Libertys, one tanker, one U-boat, all visible.
-- Sea scrolls by the convoy velocity. Merchants hold. A stopped boat drifts down-screen. Flank ahead pulls away.
-- Conn on escorts 1–4. The others return to station.
-- U-boat hull cycles with `T` (II, VIIC, IXC, XXI). Sprite and HUD knots follow the table.
-- Both helms on one keyboard. See the README.
-- Pixel docs for the palette, four sea tiles, and eight sprites. Sound doc for the bell and the helm tick. Project-X16 metadata in `x16project.json`.
+This demo is a match. The title is escort versus the boat, U-boat versus the escorts, or a link through the relay.
 
-Proven by the host tests: the XXI is the fast submerged boat and has no gun, the IXC has two stern tubes, merchants do not drift, the sea scroll matches the convoy, a wing escort walks back to station, and two inits with the same hull produce the same checksum.
+- Four escorts, five Libertys, one tanker, one U-boat.
+- Sea scrolls by the convoy velocity. Merchants hold. A stopped boat drifts down-screen.
+- Conn cycles with `[` `]`. Patrol, hunt, and attack stick to the ship you leave.
+- The boat is hidden until she is in visual range or a ping puts a contact on the plot. A moving boat gives a hydrophone bearing.
+- Bow torpedoes and depth charges. Three charge hits sink the boat. Four points of tonnage wins for the boat. A tanker is two points.
+- Solo, the side you are not playing is a simple opponent.
+- Pixel docs for the palette, four sea tiles, and ten sprites. Sound doc for the bell, helm tick, ping, and boom.
+
+Proven by the host tests: the XXI is the fast submerged boat and has no gun, merchants do not drift, the sea scroll matches the convoy, a wing escort walks back to a patrol station, an attack order closes on a contact, a torpedo sinks a merchant, a depth charge registers on the boat, and an escort packet restores the conn and her order.
 
 ## Build order from here
 
-1. **Fog.** Hide the truth. Hydrophone bearings and visual range. Contacts as dots.
-2. **Torpedoes.** Spread, tracks, hits, one sinking sequence.
-3. **Sonar and depth charges.** Active ping cone, patterns, flood timers. First real match.
-4. **Guns, bridges, exterior.** Gauges, then eight-angle billboards. Fire and list.
-5. **Damage that changes the fight.** Lost steering, dead sonar, crushed periscope, flat batteries, crush depth.
-6. **The link.** Orders over `-netcard`, checksum every couple of seconds, snapshot on a miss.
+1. **Guns, bridges, exterior.** Gauges, then eight-angle billboards. Fire and list.
+2. **Damage that changes the fight.** Lost steering, dead sonar, crushed periscope, flat batteries, crush depth. Wolfpack orders for the U-boat player.
+3. **A fuller link.** Checksum snapshot when the two sims diverge, instead of a DESYNC mark.
 
 Victory for the escort is a sunk or fleeing boat, or the clock. Victory for the boat is a tonnage line, tankers worth more than Libertys.
 

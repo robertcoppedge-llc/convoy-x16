@@ -88,7 +88,7 @@
         "doc": "assets/sprites/plot.x16spr.json",
         "tool": "pixel",
         "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/SPRITES.BIN", "bytes": 1024 }],
+        "outputs": [{ "file": "boot/SPRITES.BIN", "bytes": 1280 }],
         "placement": { "target": "vram", "addr": "0x04000", "loader": "file_load (FILE_TO_VRAM)" }
       }
     ],

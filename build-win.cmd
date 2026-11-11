@@ -13,7 +13,7 @@ set PATH=%CC65%\bin;%PATH%
 cd /d "%~dp0"
 if "%X16LIB%"=="" set X16LIB=..\..\x16-lib-poc
 set X16LIB_MODULES=display fileio\file_load vera\vera_addr vera\vera_addr16 layers\layer_config_tile layers\layer_enable_in_dc layers\layer_scroll audio\psg_core
-set SRCS=src\main.c src\game.c src\platform.c
+set SRCS=src\main.c src\game.c src\platform.c src\link.c
 set CFLAGS=-t cx16 -O -Isrc -Ibuild\gen -I%X16LIB%\include -DX16LIB_HAVE_CFG
 set OUT=CONVOY
 set OBJDIR=build\x16lib
@@ -27,7 +27,7 @@ if not exist %OBJDIR% mkdir %OBJDIR%
 if not exist boot mkdir boot
 if "%PIXEL_CLI%"=="" set PIXEL_CLI=..\pixel-x16\PixelCli\bin\Release\net10.0-windows\pixel-cli.exe
 if not exist "%PIXEL_CLI%" (echo ERROR: pixel-cli not found at %PIXEL_CLI%. Set PIXEL_CLI or run: dotnet build ..\pixel-x16\PixelCli -c Release & exit /b 1)
-"%PIXEL_CLI%" export --project . --resource plot --out boot\SPRITES.BIN --order escort:1,merchant:1,tanker:1,uboat-ii:1,uboat-viic:1,uboat-ixc:1,uboat-xxi:1,select:1 --palette-out boot\PAL.BIN --bytes 1024
+"%PIXEL_CLI%" export --project . --resource plot --out boot\SPRITES.BIN --order escort:1,merchant:1,tanker:1,uboat-ii:1,uboat-viic:1,uboat-ixc:1,uboat-xxi:1,select:1,eel:1,burst:1 --palette-out boot\PAL.BIN --bytes 1280
 if errorlevel 1 exit /b 1
 "%PIXEL_CLI%" export-tiles --project . --resource sea --out boot\TILES.BIN --bytes 512
 if errorlevel 1 exit /b 1

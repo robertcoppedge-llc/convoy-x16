@@ -16,12 +16,25 @@ smoke-win.cmd          -> scripted plot, prints "convoy smoke ok"
 
 `make` wraps the same scripts. cc65, x16emu r49, pixel-cli, and sound-cli resolve the same way as the other X16 apps (`..\..\tools`, `..\pixel-x16`, `..\sound-x16`).
 
-## Keys
+## Play
 
-- `1`–`4` take the conn of that escort. The other three hold station.
-- Arrow left/right helm, up/down telegraph (stop, slow, half, full, flank).
-- `J` / `L` U-boat helm, `I` / `K` U-boat telegraph.
-- `T` cycles the U-boat hull. The sprite and the HUD knots change. The plot does not reset.
+The title offers an escort against the boat, a U-boat against the escorts, or a link to a second machine. `T` on the title cycles Type II, VIIC, IXC, and XXI.
+
+Escort: `[` `]` cycle the conn, `1`–`4` jump to a ship. `P` patrol, `H` hunt, `A` attack. The order sticks when you leave that ship. Arrows are helm and telegraph. `S` pings ahead. `D` drops a depth charge. A contact you have not seen as a hull is a burst on the plot. Three charges sink the boat.
+
+U-boat: `J` `L` helm, `I` `K` telegraph, `F` fires the bow tubes. You see ships inside periscope range. Four points of tonnage wins. A tanker is two, a Liberty is one.
+
+The boat starts ahead of the convoy, stopped, so she is quiet on the hydrophone until she moves. The lead escort does not see her until someone pings or she drifts into visual range.
+
+## Two machines
+
+`run-win.cmd` starts the emulator with `-netcard`. On one PC:
+
+```text
+python tools\relay.py
+```
+
+On both machines, choose `3`, `E` on one and `U` on the other, type that PC's LAN address, and press Enter. The relay listens on port 6416. The match uses the boat the escort picked on the title.
 
 ## Tools
 

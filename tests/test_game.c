@@ -67,6 +67,62 @@ int main(void)
     game_telegraph_delta(-2);
     expect(ships[2].tel == TEL_STOP, "selected escort takes the telegraph");
     expect(ships[0].tel == TEL_HALF, "the flagship telegraph stays");
+    expect(game_tubes() == 3, "type II has three bow tubes");
+    game_init(BOAT_XXI);
+    expect(game_tubes() == 6, "XXI has six bow tubes");
+
+    game_init(BOAT_VIIC);
+    game_cycle(1);
+    expect(selected == 1, "cycle moves the conn");
+    game_order(ORD_HUNT);
+    game_cycle(1);
+    game_order(ORD_ATTACK);
+    expect(game_order_of(1) == ORD_HUNT, "hunt stays on the ship that left the conn");
+    expect(game_order_of(2) == ORD_ATTACK, "attack is on the conn ship");
+    expect(selected == 2, "second cycle");
+
+    game_init(BOAT_VIIC);
+    game_select(1);
+    game_order(ORD_ATTACK);
+    game_select(0);
+    ships[N_SHIP - 1].x = ships[1].x;
+    ships[N_SHIP - 1].y = ships[1].y - 40 * FP;
+    y0 = ships[1].y;
+    for (i = 0; i < 20; i++) game_tick();
+    expect(ships[1].y < y0, "attack order closes on the contact");
+    expect(game_order_of(0) == ORD_PATROL, "the conn ship keeps her own order");
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[4].x;
+    ships[N_SHIP - 1].y = ships[4].y - 30 * FP;
+    ships[N_SHIP - 1].hdg = 128;
+    ships[N_SHIP - 1].tel = TEL_STOP;
+    game_fire();
+    for (i = 0; i < 16; i++) game_tick();
+    expect(!game_alive(4), "torpedo sinks the merchant ahead of the bow");
+    expect(game_tubes() == 3, "one eel left the bow tubes");
+    expect(game_tonnage() >= 1, "tonnage is counted");
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y;
+    game_drop();
+    for (i = 0; i < 24; i++) game_tick();
+    expect(game_hits() >= 1, "a depth charge on the boat registers");
+
+    {
+        unsigned char b[4];
+        game_init(BOAT_VIIC);
+        game_select(2);
+        game_order(ORD_ATTACK);
+        game_helm(HELM_STBD);
+        game_export_escort(4, b);
+        game_order(ORD_PATROL);
+        game_select(0);
+        game_import_escort(b);
+        expect(selected == 2, "packet restores the conn");
+        expect(game_order_of(2) == ORD_ATTACK, "packet restores the order");
+    }
 
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);
