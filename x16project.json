@@ -1,0 +1,113 @@
+{
+  "comment": "Metadata for Project-X16. Not read by the build: the project's build scripts, x16cfg.h and vendor lock are the source of truth.",
+  "schema": 2,
+  "name": "convoy-x16",
+  "displayName": "Convoy (X16)",
+  "kind": "app",
+  "genre": ["single-screen"],
+  "elements": ["sprites", "tiles", "sound", "text"],
+  "targets": [
+    {
+      "id": "CONVOY",
+      "prg": "build/CONVOY.PRG",
+      "map": "build/CONVOY.map",
+      "build": { "win": "build-win.cmd", "posix": "make", "cwd": "." },
+      "variants": [
+        {
+          "id": "smoke",
+          "args": "smoke",
+          "prg": "build/SMOKE.PRG",
+          "defines": ["CONVOY_SMOKE=1"]
+        }
+      ],
+      "run": {
+        "script": "run-win.cmd",
+        "emuArgs": ["-scale", "2"],
+        "fsroot": "boot"
+      },
+      "smoke": {
+        "script": "smoke-win.cmd",
+        "gif": "fixtures/smoke.gif",
+        "seconds": 12,
+        "fsroot": "boot"
+      }
+    }
+  ],
+  "lib": {
+    "model": "c",
+    "libPath": "../../x16-lib-poc",
+    "modules": [
+      "display",
+      "fileio/file_load",
+      "vera/vera_addr",
+      "vera/vera_addr16",
+      "layers/layer_config_tile",
+      "layers/layer_enable_in_dc",
+      "layers/layer_scroll",
+      "audio/psg_core"
+    ],
+    "source": ["build-win.cmd:X16LIB_MODULES", "Makefile:X16LIB_MODULES"]
+  },
+  "config": {
+    "cfgHeader": "src/x16cfg.h",
+    "flags": { "X16_NO_SPRITE_POOL": 1 },
+    "defines": ["X16LIB_HAVE_CFG"],
+    "cpu": "6502"
+  },
+  "budgets": {
+    "prgMax": 24576,
+    "forbid": ["sprite_pool.o", "sprites.o"]
+  },
+  "notes": "640x480 4bpp convoy plot. Sea tiles are assets/tiles/sea.x16tile.json (pixel-cli export-tiles -> boot/TILES.BIN at VRAM $00000). Overhead ship sprites are assets/sprites/plot.x16spr.json (pixel-cli export -> boot/SPRITES.BIN at $04000) with palette assets/palettes/main.x16pal.json (boot/PAL.BIN at $1FA00). The 64x64 tile map is filled by the program at $00400. Layer 1 stays the KERNAL text HUD. PSG voice 0 is the telegraph drone; assets/sounds/sfx.x16snd.json (sound-cli export) is the bell and helm tick on voices 2 and 3. The plan is docs/game-plan.md. This first slice is one machine: both stations on one keyboard. The -netcard link is the next slice.",
+  "resources": {
+    "palettes": [
+      {
+        "id": "main",
+        "type": "palette",
+        "doc": "assets/palettes/main.x16pal.json",
+        "tool": "pixel",
+        "outputs": [{ "file": "boot/PAL.BIN", "bytes": 32 }],
+        "placement": { "target": "vram", "addr": "0x1FA00", "loader": "file_load (FILE_TO_VRAM)" }
+      }
+    ],
+    "tiles": [
+      {
+        "id": "sea",
+        "type": "tiles",
+        "doc": "assets/tiles/sea.x16tile.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export-tiles",
+        "outputs": [{ "file": "boot/TILES.BIN", "bytes": 512 }],
+        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load (FILE_TO_VRAM)" }
+      }
+    ],
+    "sprites": [
+      {
+        "id": "plot",
+        "type": "sprites",
+        "doc": "assets/sprites/plot.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/SPRITES.BIN", "bytes": 1024 }],
+        "placement": { "target": "vram", "addr": "0x04000", "loader": "file_load (FILE_TO_VRAM)" }
+      }
+    ],
+    "sounds": [
+      {
+        "id": "sfx",
+        "type": "sounds",
+        "doc": "assets/sounds/sfx.x16snd.json",
+        "tool": "sound",
+        "exporter": "sound-cli export",
+        "outputs": [
+          { "file": "build/gen/sfx_ids.h" },
+          { "file": "build/gen/sfx_sfx.h" }
+        ],
+        "placement": {
+          "target": "code",
+          "loader": "sfx_sfx.h included from src/platform.c, then x16lib/sfx.h. Voice 0 is the drone and is not in this table."
+        }
+      }
+    ]
+  }
+}

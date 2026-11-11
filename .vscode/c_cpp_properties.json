@@ -1,0 +1,18 @@
+{
+  "configurations": [
+    {
+      "name": "cx16",
+      "includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/tests",
+        "${workspaceFolder}/build/gen",
+        "${workspaceFolder}/../../x16-lib-poc/include",
+        "${workspaceFolder}/../../tools/cc65/win32/include"
+      ],
+      "defines": ["__CX16__", "__CBM__", "X16LIB_HAVE_CFG"],
+      "cStandard": "c99",
+      "intelliSenseMode": "windows-gcc-x64"
+    }
+  ],
+  "version": 4
+}

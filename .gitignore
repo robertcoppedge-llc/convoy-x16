@@ -1,0 +1,18 @@
+# build-win.cmd / Makefile / smoke-win.cmd
+build/
+boot/
+*.o
+*.map
+*.lbl
+*.prg
+*.PRG
+fixtures/*.gif
+# Project-X16 App Report
+docs/comms/x16-app-report.md
+.vs/
+x64/
+Debug/
+Release/
+*.vcxproj.user
+# export sidecars carry a build timestamp
+.x16/*.export.json

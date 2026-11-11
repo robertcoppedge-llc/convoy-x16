@@ -1,0 +1,111 @@
+{
+  "format": "x16.palette",
+  "schema": 1,
+  "project": "../../x16project.json",
+  "resource": "main",
+  "colorCount": 16,
+  "bitsPerPixel": 4,
+  "channelDepth": 4,
+  "index0Transparent": true,
+  "banks": 1,
+  "bankSize": 16,
+  "notes": "Plot palette. Index 0 is black and index 1 is white so the KERNAL text layer stays readable.",
+  "colors": [
+    {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "name": "black"
+    },
+    {
+      "r": 15,
+      "g": 15,
+      "b": 15,
+      "name": "white"
+    },
+    {
+      "r": 1,
+      "g": 2,
+      "b": 3,
+      "name": "outline"
+    },
+    {
+      "r": 10,
+      "g": 11,
+      "b": 12,
+      "name": "escort"
+    },
+    {
+      "r": 8,
+      "g": 6,
+      "b": 3,
+      "name": "merchant"
+    },
+    {
+      "r": 12,
+      "g": 3,
+      "b": 2,
+      "name": "tanker"
+    },
+    {
+      "r": 0,
+      "g": 2,
+      "b": 8,
+      "name": "sea-deep"
+    },
+    {
+      "r": 0,
+      "g": 4,
+      "b": 12,
+      "name": "sea"
+    },
+    {
+      "r": 2,
+      "g": 8,
+      "b": 14,
+      "name": "sea-light"
+    },
+    {
+      "r": 4,
+      "g": 6,
+      "b": 5,
+      "name": "uboat"
+    },
+    {
+      "r": 15,
+      "g": 14,
+      "b": 4,
+      "name": "yellow"
+    },
+    {
+      "r": 8,
+      "g": 12,
+      "b": 15,
+      "name": "foam"
+    },
+    {
+      "r": 15,
+      "g": 2,
+      "b": 1,
+      "name": "red"
+    },
+    {
+      "r": 6,
+      "g": 8,
+      "b": 10,
+      "name": "xxi"
+    },
+    {
+      "r": 5,
+      "g": 5,
+      "b": 4,
+      "name": "deck"
+    },
+    {
+      "r": 0,
+      "g": 0,
+      "b": 2,
+      "name": "shadow"
+    }
+  ]
+}

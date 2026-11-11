@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Convoy (x16emu)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/../../tools/x16emu/win64-r49/x16emu.exe",
+      "args": [
+        "-rom", "${workspaceFolder}/../../tools/x16emu/win64-r49/rom.bin",
+        "-prg", "${workspaceFolder}/boot/CONVOY.PRG",
+        "-run", "-scale", "2",
+        "-fsroot", "${workspaceFolder}/boot"
+      ],
+      "cwd": "${workspaceFolder}/../../tools/x16emu/win64-r49",
+      "preLaunchTask": "X16: build",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}

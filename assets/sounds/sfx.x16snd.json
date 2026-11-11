@@ -1,0 +1,44 @@
+{
+  "format": "x16.sounds",
+  "schema": 1,
+  "project": "../../x16project.json",
+  "resource": "sfx",
+  "name": "convoy",
+  "firstVoice": 2,
+  "channels": 2,
+  "fixed": true,
+  "immediate": true,
+  "effects": [
+    {
+      "name": "bell",
+      "parts": [
+        {
+          "f": 900,
+          "df": -50,
+          "vol": 42,
+          "dv": 6,
+          "wave": "pulse",
+          "pulseWidth": 40,
+          "len": 8,
+          "pri": 2,
+          "ch": 0
+        }
+      ]
+    },
+    {
+      "name": "helm",
+      "parts": [
+        {
+          "f": 240,
+          "df": 0,
+          "vol": 18,
+          "dv": 6,
+          "wave": "noise",
+          "len": 3,
+          "pri": 1,
+          "ch": 1
+        }
+      ]
+    }
+  ]
+}
