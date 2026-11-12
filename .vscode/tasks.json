@@ -26,6 +26,7 @@
       "command": "cmd.exe",
       "args": ["/d", "/c", "build-win.cmd && run-win.cmd"],
       "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "close": false, "panel": "shared" },
       "problemMatcher": {
         "owner": "cc65",
         "fileLocation": ["relative", "${workspaceFolder}"],
@@ -44,6 +45,7 @@
       "command": "cmd.exe",
       "args": ["/d", "/c", "run-win.cmd"],
       "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "close": false, "panel": "shared" },
       "problemMatcher": []
     },
     {

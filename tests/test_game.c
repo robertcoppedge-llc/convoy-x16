@@ -44,9 +44,10 @@ int main(void)
     expect(ships[0].y < y0, "flank escort pulls ahead");
     expect(ships[4].y == my, "merchant holds station in the convoy frame");
     expect(ships[9].kind == SHIP_TANKER, "last merchant is the tanker");
-    expect(ships[9].y == my + 72 * FP, "tanker holds her row");
+    expect(ships[9].y == my + 260 * FP, "tanker holds her row");
+    expect(ships[7].x - ships[4].x == 260 * FP, "columns sit apart");
     expect(ships[N_SHIP - 1].y > uy, "stopped U-boat drifts down-screen");
-    expect(scroll_y == -80, "sea scrolls with the convoy");
+    expect(scroll_y == -40, "sea scrolls with the convoy");
     expect(game_checksum() != c0, "checksum moves when the plot moves");
 
     game_init(BOAT_XXI);
@@ -65,7 +66,9 @@ int main(void)
     game_init(BOAT_II);
     game_select(2);
     game_telegraph_delta(-2);
-    expect(ships[2].tel == TEL_STOP, "selected escort takes the telegraph");
+    expect(ships[2].tel == TEL_DEAD, "two notches down is dead slow");
+    game_telegraph_delta(-2);
+    expect(ships[2].tel == TEL_ASTERN, "two more notches is astern");
     expect(ships[0].tel == TEL_HALF, "the flagship telegraph stays");
     expect(game_tubes() == 3, "type II has three bow tubes");
     game_init(BOAT_XXI);
@@ -88,7 +91,7 @@ int main(void)
     ships[N_SHIP - 1].x = ships[1].x;
     ships[N_SHIP - 1].y = ships[1].y - 40 * FP;
     y0 = ships[1].y;
-    for (i = 0; i < 20; i++) game_tick();
+    for (i = 0; i < 8; i++) game_tick();
     expect(ships[1].y < y0, "attack order closes on the contact");
     expect(game_order_of(0) == ORD_PATROL, "the conn ship keeps her own order");
 
@@ -107,7 +110,7 @@ int main(void)
     ships[N_SHIP - 1].x = ships[0].x;
     ships[N_SHIP - 1].y = ships[0].y;
     game_drop();
-    for (i = 0; i < 24; i++) game_tick();
+    for (i = 0; i < 40; i++) game_tick();
     expect(game_hits() >= 1, "a depth charge on the boat registers");
 
     {
@@ -123,6 +126,59 @@ int main(void)
         expect(selected == 2, "packet restores the conn");
         expect(game_order_of(2) == ORD_ATTACK, "packet restores the order");
     }
+
+    game_init(BOAT_VIIC);
+    {
+        unsigned char e;
+        int clear = 1;
+        for (e = 0; e < N_ESCORT; e++) {
+            long dx = ((long)ships[N_SHIP - 1].x - ships[e].x) / FP;
+            long dy = ((long)ships[N_SHIP - 1].y - ships[e].y) / FP;
+            if (dx * dx + dy * dy <= 130L * 130L) clear = 0;
+        }
+        expect(clear, "boat starts outside escort sight");
+        expect(ships[N_SHIP - 1].x < ships[0].x, "boat starts off to port");
+        expect(ships[N_SHIP - 1].y < ships[0].y, "boat starts ahead of the leader");
+    }
+    /* The fight checks park her in the old close position. The match itself does not. */
+    ships[N_SHIP - 1].x = ships[4].x + 20 * FP;
+    ships[N_SHIP - 1].y = ships[4].y + 80 * FP;
+    game_set_player(ROLE_ESCORT);
+    for (i = 0; i < 160; i++) {
+        game_ai_uboat();
+        game_tick();
+    }
+    expect(game_tubes() == 3, "solo boat fires one fish and keeps the rest");
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y - 70 * FP;
+    game_set_player(ROLE_UBOAT);
+    {
+        unsigned char attacked = 0;
+        for (i = 0; i < 140; i++) {
+            game_ai_escort();
+            game_tick();
+            if (game_order_of(0) == ORD_ATTACK || game_order_of(1) == ORD_ATTACK ||
+                game_order_of(2) == ORD_ATTACK || game_order_of(3) == ORD_ATTACK)
+                attacked = 1;
+        }
+        expect(attacked, "solo escorts attack a contact");
+        expect(game_hits() >= 1, "solo escorts depth-charge the boat");
+    }
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y - 40 * FP;
+    game_gun();
+    for (i = 0; i < 16; i++) game_tick();
+    expect(game_hits() >= 1, "deck gun hits a surfaced boat ahead");
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y;
+    game_tick();
+    expect(game_hits() >= 1, "ramming a surfaced boat counts");
 
     if (fails) {
         fprintf(stderr, "%d failed\n", fails);

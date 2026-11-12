@@ -12,13 +12,18 @@ A 640×480 4bpp framebuffer is 150KB. VERA has 128KB, so the picture is two tile
 
 | Use | Layout | VRAM in this build |
 |---|---|---|
-| Sea | Layer 0, 16×16 tiles, 4bpp, map 64×64 | Tiles at `$00000` (512 bytes, four tiles). Map filled by the program at `$00400` (8KB). |
-| Instruments and text | Layer 1, KERNAL 80×60 text, left where the ROM put it (`$1B000` / charset `$1F000`) | Not overwritten |
-| Plot ships | 16×16 4bpp sprites between the two layers | `$04000`, 1024 bytes, eight images |
+| Sea | Layer 0, 16×16 tiles, 4bpp, map 64×64. One light-blue tile, two sparse wave breaks | Tiles at `$00000` (512 bytes). Map filled by the program at `$00400` (8KB). |
+| Map and hub | Layer 1, KERNAL 80×60 text (`$1B000` / charset `$1F000`) | Not overwritten. Columns 0–59 are the 480×480 map. Columns 60–79 are the hub, opaque. Map text background is transparent. |
+| Hulls and wakes | 64×64 4bpp, 16 aspects, between the layers | One slot per visible body at `$05000` (2KB each). Sheets live in banked RAM. |
+| Eel and burst | 16×16 | `$04000` |
 
-Later exterior views use 64×64 sprites, several of them stacked for one hull, and those sheets load only when the glasses or the periscope are raised. The bridge is a 16×16 tile painting with sprite needles. A station change is a tileset swap.
+The program is about 35KB, inside a 36KB cap. The map is the left 480×480. The view stays on the ship that has the conn (the selected escort, or the boat). Other hulls move around her. `Z` zooms that chart out through 32, 16, and 8 pixel aspects, then back to 64. Latitude and longitude are grid numbers that travel along the left edge and the top as the conn ship moves. The hub on the right is drawn once and patched when a value changes, so it does not flicker. The bottom of the hub is the key list.
 
-The plot column can stay up while instrument tiles occupy the side, about 160 pixels, once the bridge art exists. This first build uses two text rows instead.
+`V` cycles three pictures. The map is overhead. The bridge is a bulkhead and a bow window: ships in the forward arc are head-on aspects. Binoculars (escort) and the periscope (U-boat) are that same window with a sky and a horizon. `N` and `M` slew the look. The U-boat starts ahead and to port, outside visual and sonar range.
+
+Sixteen aspects, not a 16° step. The helm is 256 steps, and 16 divides it, so each drawing is 22.5°. A true 16° step does not divide 360 or 256. Frame 0 is bow-north, then clockwise. A moving ship draws a wake on the same aspect, set astern. `tools/gen_hulls.py` writes those sheets (`escort.bin`, `merchant.bin`, `tanker.bin`, `uboat.bin`, `wake.bin`). The four U-boat types still share one overhead hull. The type name is in the hub.
+
+The bridge and the glasses use sixteen painted 64-pixel aspects per hull, bow-on then clockwise, the same step as the chart. The sheets live in RAM banks 29–44. The aspect in view is copied into a hull slot.
 
 Index 0 is black and index 1 is white so the text layer survives the palette load.
 
@@ -54,9 +59,9 @@ A contact is a bearing, a confidence, and sometimes a range. It becomes a ship i
 
 Only one heavy view is resident at a time.
 
-**Plot.** Overhead water, ship sprites, and later wakes, tracks, splashes, and charge circles. A mark on the escort that has the conn. Bearing tape and contact list in the margins.
+**Plot.** Overhead water, 64×64 aspects, wakes, and a zoomed 8×8 chart. The conn ship stays centered. Grid numbers slide along the margins.
 
-**Bridge interior.** One room per role. Sprite needles and lamps over a tile painting.
+**Bridge interior.** This build has one conn picture: a dark bulkhead, a bow window, and the ships ahead as head-on aspects. The fuller rooms are still to come.
 
 - Escort conn: wheel, telegraph, compass repeater, revolution counter, damage lamps.
 - Sonar shack: bearing ring, range drum, ping button.
@@ -69,7 +74,7 @@ Damage darkens lamps, sticks needles, and cracks the painting. Fire and flood ar
 
 Binoculars are that view through a dual-circle mask, narrower and longer-ranged. The periscope is a circular mask, a stadimeter, and a sky/sea split. Raised, it leaves a feather an escort can see when they are close and the sea is calm.
 
-Overhead art in this build is one bow-up image per hull. Eight headings come with the next art pass. Until then the HUD prints the compass heading.
+Overhead art is 16 aspects per hull, bow-north then clockwise, plus a wake. The compass heading is repeated in the hub.
 
 ## U-boat roster
 
@@ -102,6 +107,10 @@ The contact should hint at the hull. A small, fast dive reads as a II. A loud bo
 One escort hull (a Hunt-type) and two merchant hulls (Liberty and tanker). Six merchants in two columns of three. The starboard after ship is the tanker.
 
 The escort who has the conn takes the wheel and the telegraph. `[` and `]` (or `1`–`4`) move the conn. Each escort also carries an order, set with `P`, `H`, or `A` while she has the conn. When you cycle off her, she carries that order out. The ship you are steering ignores her order until you leave.
+
+`Z` zooms the map out through 64, 32, 16, and 8 pixel sprites, each with the same 16 headings, then returns to 64. `1` to `4` select an escort. The number is drawn on her hull, and the escort under the wheel uses the gold palette. Torpedoes, their wakes, and the depth-charge fall and splash are 16-way as well.
+
+The bridge window and the glass show a horizon, sky above it and sea below, and the bulkhead or the scope mask covers any hull that crosses the rim. The sea under that line drifts with your own speed and the way you are looking. A foam ring is dropped in the water as a ship moves, and the older rings stay put when she turns. In the binoculars and the periscope, `N` and `M` (and the helm keys) only slew the look. The hub shows the ship's heading and the look bearing separately. A torpedo shows its streak in that window, turned to the look. The bridge and scope use sixteen painted aspects, held in banked RAM. The overhead map is sixteen as well. The bridge, for the escort and for the surfaced boat, is look-and-steer: `N` and `M` turn the ship and the view stays on the bow. Binoculars and the periscope only slew the look. Underwater, the control room is the boat's bridge: the arrow keys turn her, and `C` opens that room only for the U-boat. Telegraph steps are full astern, astern, stop, dead slow, slow, half, full, and flank. The helm ticks every three blanks. Ships steam at half the first demo's speed, and the columns are spaced so a 64 pixel hull does not sit on the next ship. A watch officer calls a surfaced boat inside 120 pixels that the lookouts have not yet marked. The hub draws three scopes, each a 128 pixel face made from four 64 pixel quadrants: radar with an automatic sweep (convoy contacts white, the boat red), sonar as a forward sector, and a hydrophone ray. `F` on an escort fires the deck gun at a boat that is still up, and driving onto her rams. A red diamond is the last plotted position after she dives. The key list is only the side you are playing.
 
 - **Patrol.** Her screen station: ahead, port beam, starboard beam, or astern. On station she steams with the convoy.
 - **Hunt.** Full ahead toward the last sonar or visual contact. With no contact she searches ahead of the convoy, port then starboard.
@@ -151,18 +160,18 @@ Packets stay under 32 bytes in play. A snapshot is a few hundred bytes and trave
 This demo is a match. The title is escort versus the boat, U-boat versus the escorts, or a link through the relay.
 
 - Four escorts, five Libertys, one tanker, one U-boat.
-- Sea scrolls by the convoy velocity. Merchants hold. A stopped boat drifts down-screen.
+- The 480×480 map keeps the conn ship in the middle. The sea is light blue with a few wave breaks. Merchants hold in the convoy frame. A stopped boat drifts down the map.
 - Conn cycles with `[` `]`. Patrol, hunt, and attack stick to the ship you leave.
 - The boat is hidden until she is in visual range or a ping puts a contact on the plot. A moving boat gives a hydrophone bearing.
 - Bow torpedoes and depth charges. Three charge hits sink the boat. Four points of tonnage wins for the boat. A tanker is two points.
-- Solo, the side you are not playing is a simple opponent.
-- Pixel docs for the palette, four sea tiles, and ten sprites. Sound doc for the bell, helm tick, ping, and boom.
+- Solo is the one-machine match, for play and for a hand smoke of either side. The boat ambushes one column and the escorts screen, ping, and attack.
+- Hulls, wakes, and the two small marks are generated by `tools/gen_hulls.py`. The palette and the sea tiles stay pixel docs. Sound doc for the bell, helm tick, ping, and boom.
 
-Proven by the host tests: the XXI is the fast submerged boat and has no gun, merchants do not drift, the sea scroll matches the convoy, a wing escort walks back to a patrol station, an attack order closes on a contact, a torpedo sinks a merchant, a depth charge registers on the boat, and an escort packet restores the conn and her order.
+Proven by the host tests: the XXI is the fast submerged boat and has no gun, merchants do not drift, the sea scroll matches the convoy, a wing escort walks back to a patrol station, an attack order closes on a contact, a torpedo sinks a merchant, a depth charge registers on the boat, an escort packet restores the conn and her order, the solo boat fires one fish, and the solo escorts attack and depth-charge. The emulator smoke checks the same plot and both opponents.
 
 ## Build order from here
 
-1. **Guns, bridges, exterior.** Gauges, then eight-angle billboards. Fire and list.
+1. **Guns, bridges, exterior.** Gauges, then the head-on aspects. A distinct overhead hull for the XXI. Fire and list.
 2. **Damage that changes the fight.** Lost steering, dead sonar, crushed periscope, flat batteries, crush depth. Wolfpack orders for the U-boat player.
 3. **A fuller link.** Checksum snapshot when the two sims diverge, instead of a DESYNC mark.
 

@@ -4,7 +4,7 @@ ship_t ships[N_SHIP];
 unsigned char selected;
 unsigned char uboat_type;
 int scroll_x, scroll_y;
-unsigned char snd_ping, snd_boom;
+unsigned char snd_ping, snd_boom, snd_launch;
 
 static unsigned char helm_e, helm_u;
 static unsigned char orders[N_ESCORT];
@@ -12,9 +12,14 @@ static unsigned char sunk[N_SHIP];
 static unsigned char player;
 static unsigned char conn_on;
 static unsigned char tubes, hits, tonnage, winner;
-static unsigned char ping_f, drop_f, fire_f;
+static unsigned char ping_f, drop_f, fire_f, gun_f;
 static unsigned char cool_fire, cool_dc[N_ESCORT], cool_drop;
-static unsigned char contact_age, hear_on, hear_hdg;
+static unsigned char contact_age, hear_on, hear_hdg, watch_on, watch_hdg;
+static unsigned char ping_age, ping_who;
+static int hear_dx, hear_dy;
+static unsigned char boat_slip;
+static unsigned char depth, battery;
+static signed char planes;
 static unsigned int ticks;
 static int contact_x, contact_y;
 
@@ -26,19 +31,26 @@ static const int sdir[32] = {
     0, -3, -6, -9, -12, -14, -15, -16,
     -16, -16, -15, -14, -12, -9, -6, -3
 };
-static const int tel_fp[5] = { 0, 1 * FP, 2 * FP, 3 * FP, 4 * FP };
+/* Half the old step. Astern is negative. Dead slow is a quarter of slow. */
+static const int tel_fp[8] = { 0, 8, 16, 24, 32, 4, -8, -16 };
+static const unsigned char tel_order[8] = {
+    TEL_FULL_ASTERN, TEL_ASTERN, TEL_STOP, TEL_DEAD, TEL_SLOW, TEL_HALF, TEL_FULL, TEL_FLANK
+};
 
 #define CENTER_X (320 * FP)
 #define CENTER_Y (200 * FP)
 
-static const int st_x[N_ESCORT] = { 0, -72 * FP, 72 * FP, 0 };
-static const int st_y[N_ESCORT] = { -88 * FP, 0, 0, 88 * FP };
-static const int form_x[N_MERCH] = { -28 * FP, -28 * FP, -28 * FP, 28 * FP, 28 * FP, 28 * FP };
-static const int form_y[N_MERCH] = { -36 * FP, 0, 36 * FP, -36 * FP, 0, 36 * FP };
+/* Centers are far enough apart that a 64px hull and its wake do not cover the next ship. */
+static const int st_x[N_ESCORT] = { 0, -300 * FP, 300 * FP, 0 };
+static const int st_y[N_ESCORT] = { -280 * FP, 40 * FP, 40 * FP, 280 * FP };
+static const int form_x[N_MERCH] = { -130 * FP, -130 * FP, -130 * FP, 130 * FP, 130 * FP, 130 * FP };
+static const int form_y[N_MERCH] = { -130 * FP, 0, 130 * FP, -130 * FP, 0, 130 * FP };
 
 typedef struct { int x, y; unsigned char hdg, life, on; } shot_t;
 static shot_t torp[N_TORP];
 static shot_t charge[N_DC];
+static shot_t shell;
+static unsigned char cool_gun, cool_ram;
 
 typedef struct {
     const char *name;
@@ -78,7 +90,13 @@ unsigned char game_winner(void) { return winner; }
 unsigned char game_torp_on(unsigned char i) { return torp[i].on; }
 unsigned char game_dc_on(unsigned char i) { return charge[i].on; }
 void game_torp_xy(unsigned char i, int *x, int *y) { *x = torp[i].x; *y = torp[i].y; }
+unsigned char game_torp_hdg(unsigned char i) { return torp[i].hdg; }
 void game_dc_xy(unsigned char i, int *x, int *y) { *x = charge[i].x; *y = charge[i].y; }
+unsigned char game_dc_life(unsigned char i) { return charge[i].life; }
+unsigned char game_dc_hdg(unsigned char i) { return charge[i].hdg; }
+unsigned char game_shell_on(void) { return shell.on; }
+void game_shell_xy(int *x, int *y) { *x = shell.x; *y = shell.y; }
+unsigned char game_shell_hdg(void) { return shell.hdg; }
 
 void game_station(unsigned char escort, int *x, int *y)
 {
@@ -90,6 +108,58 @@ static void vel(unsigned char hdg, int speed, int *vx, int *vy)
 {
     *vx = speed * sdir[hdg >> 3] / 16;
     *vy = -(speed * sdir[((hdg + 64) & 255) >> 3] / 16);
+}
+
+/* Eight rings left in the water. Each is the same wake sprite, and a turn
+ * leaves them along the old track instead of spinning with the hull. */
+#define N_WAKE 8
+static int wake_x[N_WAKE];
+static int wake_y[N_WAKE];
+static unsigned char last_w[N_SHIP];
+static unsigned char wake_i;
+static unsigned char wake_n;
+
+static void wake_reset(void)
+{
+    unsigned char i;
+    wake_i = 0;
+    wake_n = 0;
+    for (i = 0; i < N_SHIP; i++) last_w[i] = 255;
+}
+
+static void wake_drop(void)
+{
+    unsigned char i;
+    for (i = 0; i < N_SHIP; i++) {
+        int dx, dy;
+        if (sunk[i] || ships[i].tel == TEL_STOP) continue;
+        if (i == UB && depth >= 8) continue;
+        if (last_w[i] != 255) {
+            dx = (int)(ships[i].x - wake_x[last_w[i]]);
+            dy = (int)(ships[i].y - wake_y[last_w[i]]);
+            if (dx < 192 && dx > -192 && dy < 192 && dy > -192) continue;
+        }
+        wake_x[wake_i] = ships[i].x;
+        wake_y[wake_i] = ships[i].y;
+        last_w[i] = wake_i;
+        wake_i = (unsigned char)((wake_i + 1) & (N_WAKE - 1));
+        if (wake_n < N_WAKE) wake_n++;
+    }
+}
+
+void game_water(unsigned char i, int *vx, int *vy)
+{
+    unsigned char tel = ships[i].tel;
+    if (i == UB && depth >= 8 && tel_fp[tel] > tel_fp[TEL_SLOW]) tel = TEL_SLOW;
+    vel(ships[i].hdg, tel_fp[tel], vx, vy);
+}
+
+unsigned char game_wake_at(unsigned char n, int *x, int *y)
+{
+    if (n >= wake_n) return 0;
+    *x = wake_x[n];
+    *y = wake_y[n];
+    return 1;
 }
 
 static unsigned char heading_to(int dx, int dy)
@@ -115,6 +185,15 @@ static unsigned char turn_toward(unsigned char from, unsigned char to)
     return (unsigned char)(from + d);
 }
 
+static int hdg_gap(unsigned char a, unsigned char b)
+{
+    int d = (int)a - (int)b;
+    if (d > 128) d -= 256;
+    if (d < -128) d += 256;
+    if (d < 0) d = -d;
+    return d;
+}
+
 static unsigned char near_px(int x0, int y0, int x1, int y1, int r)
 {
     long dx = ((long)x0 - x1) / FP;
@@ -127,10 +206,10 @@ static unsigned char near_px(int x0, int y0, int x1, int y1, int r)
 
 static void clamp_ship(ship_t *s)
 {
-    if (s->x < -64 * FP) s->x = -64 * FP;
-    if (s->x > 704 * FP) s->x = 704 * FP;
-    if (s->y < -64 * FP) s->y = -64 * FP;
-    if (s->y > 512 * FP) s->y = 512 * FP;
+    if (s->x < -512 * FP) s->x = -512 * FP;
+    if (s->x > 1024 * FP) s->x = 1024 * FP;
+    if (s->y < -512 * FP) s->y = -512 * FP;
+    if (s->y > 1024 * FP) s->y = 1024 * FP;
 }
 
 static void mark_contact(void)
@@ -155,13 +234,19 @@ void game_init(unsigned char uboat)
     conn_on = 1;
     helm_e = HELM_MID;
     helm_u = HELM_MID;
-    ping_f = drop_f = fire_f = 0;
+    ping_f = drop_f = fire_f = gun_f = 0;
+    cool_gun = cool_ram = 0;
+    shell.on = 0;
     cool_fire = cool_drop = 0;
     tubes = boats[uboat_type].bow;
     hits = tonnage = winner = 0;
-    contact_age = hear_on = 0;
+    contact_age = hear_on = watch_on = ping_age = 0;
+    boat_slip = 0;
     ticks = 0;
-    snd_ping = snd_boom = 0;
+    snd_ping = snd_boom = snd_launch = 0;
+    depth = 0;
+    battery = 40;
+    planes = 0;
     scroll_x = scroll_y = 0;
     for (i = 0; i < N_ESCORT; i++) {
         orders[i] = ORD_PATROL;
@@ -185,8 +270,10 @@ void game_init(unsigned char uboat)
     ships[UB].kind = SHIP_UBOAT;
     ships[UB].hdg = 0;
     ships[UB].tel = TEL_STOP;
-    ships[UB].x = CENTER_X;
-    ships[UB].y = CENTER_Y - 200 * FP;
+    /* Ahead and to port, outside radar, so the columns are not born on top of her. */
+    ships[UB].x = CENTER_X - 280 * FP;
+    ships[UB].y = CENTER_Y - 560 * FP;
+    wake_reset();
     for (i = 0; i < N_TORP; i++) torp[i].on = 0;
     for (i = 0; i < N_DC; i++) charge[i].on = 0;
 }
@@ -228,21 +315,23 @@ void game_helm(unsigned char helm) { helm_e = helm; }
 void game_uboat_helm(unsigned char helm) { helm_u = helm; }
 void game_uboat_set_tel(unsigned char tel)
 {
-    if (tel > TEL_FLANK) tel = TEL_FLANK;
+    if (tel > TEL_FULL_ASTERN) tel = TEL_FULL_ASTERN;
     ships[UB].tel = tel;
 }
 
 static void bump_tel(unsigned char *tel, signed char d)
 {
-    int t = (int)*tel + d;
-    if (t < TEL_STOP) t = TEL_STOP;
-    if (t > TEL_FLANK) t = TEL_FLANK;
-    *tel = (unsigned char)t;
+    unsigned char i, at = 0;
+    for (i = 0; i < 8; i++) if (tel_order[i] == *tel) at = i;
+    while (d < 0 && at > 0) { at--; d++; }
+    while (d > 0 && at < 7) { at++; d--; }
+    *tel = tel_order[at];
 }
 
 void game_telegraph_delta(signed char d) { bump_tel(&ships[selected].tel, d); }
 void game_uboat_telegraph_delta(signed char d) { bump_tel(&ships[UB].tel, d); }
 void game_ping(void) { ping_f = 1; }
+void game_gun(void) { gun_f = 1; }
 void game_drop(void) { drop_f = 1; }
 void game_fire(void) { fire_f = 1; }
 
@@ -265,55 +354,108 @@ static void steer_to(unsigned char i, int tx, int ty, unsigned char fast, unsign
 
 void game_ai_escort(void)
 {
-    unsigned char i, best = 0;
-    long best_d = 999999L;
+    unsigned char i, atk = 0, hunt = 0;
+    long best_d = 999999L, second = 999999L;
     game_helm(HELM_MID);
+    for (i = 0; i < N_ESCORT; i++) orders[i] = ORD_PATROL;
+    if (winner) return;
+    /* No plot yet. Stay on the stations and ping up the bow. A hunt without
+     * a contact walks the leader off the boat lying ahead. The first ping
+     * waits, so a boat still has time to leave the bow arc. */
     if (!contact_age) {
-        for (i = 0; i < N_ESCORT; i++) orders[i] = ORD_PATROL;
+        if ((ticks % 48) == 24) {
+            unsigned char p = 0;
+            while (p < N_ESCORT && sunk[p]) p++;
+            if (p < N_ESCORT) {
+                game_select(p);
+                game_ping();
+            }
+        }
         return;
     }
     for (i = 0; i < N_ESCORT; i++) {
         long dx, dy, d;
-        orders[i] = ORD_PATROL;
         if (sunk[i]) continue;
         dx = ((long)contact_x - ships[i].x) / FP;
         dy = ((long)contact_y - ships[i].y) / FP;
         d = dx * dx + dy * dy;
-        if (d < best_d) { best_d = d; best = i; }
+        if (d < best_d) {
+            second = best_d;
+            hunt = atk;
+            best_d = d;
+            atk = i;
+        } else if (d < second) {
+            second = d;
+            hunt = i;
+        }
     }
-    if (!sunk[best]) orders[best] = ORD_ATTACK;
+    if (!sunk[atk]) orders[atk] = ORD_ATTACK;
+    if (hunt != atk && !sunk[hunt]) orders[hunt] = ORD_HUNT;
 }
 
 void game_ai_uboat(void)
 {
     unsigned char i;
     long best = 999999L;
-    int bx = ships[N_ESCORT].x, by = ships[N_ESCORT].y;
-    unsigned char danger = 0;
+    int bx = 0, by = 0;
+    int dx, adx;
+    unsigned char want, danger = 0;
     game_uboat_helm(HELM_MID);
     if (sunk[UB] || winner) return;
+    /* One fish, then a short run. Otherwise she dumps the bow tubes. */
+    if (boat_slip) {
+        boat_slip--;
+        ships[UB].hdg = turn_toward(ships[UB].hdg, 64);
+        ships[UB].tel = TEL_FLANK;
+        return;
+    }
     for (i = 0; i < N_ESCORT; i++) {
-        if (!sunk[i] && near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 42))
+        if (!sunk[i] && near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 18))
             danger = 1;
     }
     if (danger) {
-        ships[UB].hdg = 64;
+        unsigned char e = 0;
+        long near_d = 999999L;
+        for (i = 0; i < N_ESCORT; i++) {
+            long ex, ey, ed;
+            if (sunk[i]) continue;
+            ex = ((long)ships[i].x - ships[UB].x) / FP;
+            ey = ((long)ships[i].y - ships[UB].y) / FP;
+            ed = ex * ex + ey * ey;
+            if (ed < near_d) { near_d = ed; e = i; }
+        }
+        ships[UB].hdg = turn_toward(ships[UB].hdg, (unsigned char)(ships[e].hdg + 64));
         ships[UB].tel = TEL_FLANK;
         return;
     }
     for (i = N_ESCORT; i < UB; i++) {
-        long dx, dy, d;
+        long sx, sy, d;
         if (sunk[i]) continue;
-        dx = ((long)ships[i].x - ships[UB].x) / FP;
-        dy = ((long)ships[i].y - ships[UB].y) / FP;
-        d = dx * dx + dy * dy;
+        sx = ((long)ships[i].x - ships[UB].x) / FP;
+        sy = ((long)ships[i].y - ships[UB].y) / FP;
+        d = sx * sx + sy * sy;
         if (d < best) { best = d; bx = ships[i].x; by = ships[i].y; }
     }
-    ships[UB].hdg = heading_to(bx - ships[UB].x, by - ships[UB].y);
-    if (best < 36L * 36L) {
+    if (best > 900000L) {
+        ships[UB].tel = TEL_STOP;
+        return;
+    }
+    /* Slide onto the target's column first. A bow shot down the centre
+     * line meets the lead escort before it meets a merchant. */
+    dx = bx - ships[UB].x;
+    adx = dx < 0 ? -dx : dx;
+    if (adx > 14 * FP) {
+        ships[UB].hdg = turn_toward(ships[UB].hdg, (unsigned char)(dx > 0 ? 64 : 192));
+        ships[UB].tel = TEL_SLOW;
+        return;
+    }
+    want = heading_to(bx - ships[UB].x, by - ships[UB].y);
+    ships[UB].hdg = turn_toward(ships[UB].hdg, want);
+    if (best < 96L * 96L && hdg_gap(ships[UB].hdg, want) < 16) {
         ships[UB].tel = TEL_SLOW;
         game_fire();
-    } else if (by + 20 * FP < ships[UB].y) {
+        boat_slip = 80;
+    } else if (by + 40 * FP < ships[UB].y) {
         ships[UB].tel = TEL_FULL;
     } else {
         ships[UB].tel = TEL_STOP;
@@ -333,6 +475,7 @@ static void spawn_torp(void)
         torp[i].life = 80;
         tubes--;
         cool_fire = 20;
+        snd_launch = 1;
         return;
     }
 }
@@ -346,7 +489,8 @@ static void spawn_dc(unsigned char who)
         charge[i].on = 1;
         charge[i].x = ships[who].x;
         charge[i].y = ships[who].y;
-        charge[i].life = 18;
+        charge[i].hdg = ships[who].hdg;
+        charge[i].life = 28;
         cool_dc[who] = 36;
         return;
     }
@@ -356,13 +500,19 @@ static void sensors(void)
 {
     unsigned char i;
     unsigned char refreshed = 0;
+    unsigned char fresh_ping = 0;
     hear_on = 0;
+    watch_on = 0;
     if (!sunk[UB]) {
         for (i = 0; i < N_ESCORT; i++) {
             if (sunk[i]) continue;
             if (near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 56)) {
                 mark_contact();
                 refreshed = 1;
+            } else if (depth < 8 &&
+                       near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 120)) {
+                watch_on = 1;
+                watch_hdg = heading_to(ships[UB].x - ships[i].x, ships[UB].y - ships[i].y);
             }
         }
         if (ping_f && !sunk[selected]) {
@@ -377,11 +527,18 @@ static void sensors(void)
                 mark_contact();
                 refreshed = 1;
             }
+            if (!sunk[UB] && near_px(ships[selected].x, ships[selected].y, ships[UB].x, ships[UB].y, 220)) {
+                ping_age = 40;
+                ping_who = selected;
+                fresh_ping = 1;
+            }
         }
         if (ships[UB].tel != TEL_STOP && !sunk[selected] &&
             near_px(ships[selected].x, ships[selected].y, ships[UB].x, ships[UB].y, 180)) {
             hear_on = 1;
-            hear_hdg = heading_to(ships[UB].x - ships[selected].x, ships[UB].y - ships[selected].y);
+            hear_dx = (int)(((long)ships[UB].x - ships[selected].x) / FP);
+            hear_dy = (int)(((long)ships[UB].y - ships[selected].y) / FP);
+            hear_hdg = heading_to((int)(ships[UB].x - ships[selected].x), (int)(ships[UB].y - ships[selected].y));
         }
     }
     if (player == ROLE_UBOAT) {
@@ -396,10 +553,13 @@ static void sensors(void)
             if (d < 180L * 180L && d < best) {
                 best = d;
                 hear_on = 1;
-                hear_hdg = heading_to(ships[i].x - ships[UB].x, ships[i].y - ships[UB].y);
+                hear_dx = (int)(((long)ships[i].x - ships[UB].x) / FP);
+                hear_dy = (int)(((long)ships[i].y - ships[UB].y) / FP);
+                hear_hdg = heading_to((int)(ships[i].x - ships[UB].x), (int)(ships[i].y - ships[UB].y));
             }
         }
     }
+    if (ping_age && !fresh_ping) ping_age--;
     ping_f = 0;
     if (contact_age && !refreshed) {
         if (contact_age < 150) contact_age++;
@@ -410,7 +570,27 @@ static void sensors(void)
 unsigned char game_hear(unsigned int *deg)
 {
     if (!hear_on) return 0;
-    *deg = (unsigned int)((unsigned long)hear_hdg * 360ul / 256ul);
+    *deg = (unsigned int)((hear_hdg * 45u) >> 5);
+    return 1;
+}
+
+unsigned char game_hear_xy(int *dx, int *dy)
+{
+    if (!hear_on) return 0;
+    *dx = hear_dx;
+    *dy = hear_dy;
+    return 1;
+}
+
+unsigned char game_ping_who(void)
+{
+    return ping_age ? ping_who : 255;
+}
+
+unsigned char game_watch(unsigned int *deg)
+{
+    if (!watch_on || player != ROLE_ESCORT) return 0;
+    *deg = (unsigned int)((watch_hdg * 45u) >> 5);
     return 1;
 }
 
@@ -418,8 +598,25 @@ unsigned char game_show_uboat(void)
 {
     if (sunk[UB]) return 0;
     if (player == ROLE_UBOAT) return 1;
-    return near_px(ships[selected].x, ships[selected].y, ships[UB].x, ships[UB].y, 56);
+    if (depth >= 8) return 0;
+    return near_px(ships[selected].x, ships[selected].y, ships[UB].x, ships[UB].y, 100);
 }
+
+void game_set_planes(signed char p)
+{
+    if (p < -2) p = -2;
+    if (p > 2) p = 2;
+    planes = p;
+}
+
+void game_planes(signed char d)
+{
+    game_set_planes((signed char)(planes + d));
+}
+
+unsigned char game_depth(void) { return depth; }
+unsigned char game_battery(void) { return battery; }
+signed char game_planes_of(void) { return planes; }
 
 unsigned char game_show_ship(unsigned char i)
 {
@@ -471,6 +668,14 @@ void game_tick(void)
     if (!sunk[UB]) {
         if (helm_u == HELM_PORT) ships[UB].hdg = (unsigned char)(ships[UB].hdg - 4);
         else if (helm_u == HELM_STBD) ships[UB].hdg = (unsigned char)(ships[UB].hdg + 4);
+        if (battery == 0 && depth) planes = -1;
+        if (planes > 0 && depth < 80) depth = (unsigned char)(depth + planes);
+        else if (planes < 0 && depth) {
+            unsigned char drop = (unsigned char)(-planes);
+            depth = (unsigned char)(depth > drop ? depth - drop : 0);
+        }
+        if (depth && (ticks & 15) == 0 && battery) battery--;
+        if (!depth && (ticks & 7) == 0 && battery < 40) battery++;
     }
     helm_e = HELM_MID;
     helm_u = HELM_MID;
@@ -482,13 +687,17 @@ void game_tick(void)
         if (conn_on && i == selected) continue;
         if (orders[i] == ORD_ATTACK && contact_age) {
             steer_to(i, contact_x, contact_y, TEL_FLANK, 0);
-            if (near_px(ships[i].x, ships[i].y, contact_x, contact_y, 22))
+            /* A drop at the edge of a wide range sits outside the blast.
+             * Stop and drop only once she is inside it. */
+            if (near_px(ships[i].x, ships[i].y, contact_x, contact_y, 8)) {
+                ships[i].tel = TEL_STOP;
                 spawn_dc(i);
+            }
         } else if (orders[i] == ORD_HUNT && contact_age) {
             steer_to(i, contact_x, contact_y, TEL_FULL, 0);
         } else if (orders[i] == ORD_HUNT || orders[i] == ORD_ATTACK) {
-            tx = CENTER_X + ((ticks & 64) ? 90 * FP : -90 * FP);
-            ty = CENTER_Y - 130 * FP;
+            tx = CENTER_X + ((ticks & 64) ? 200 * FP : -200 * FP);
+            ty = CENTER_Y - 420 * FP;
             steer_to(i, tx, ty, orders[i] == ORD_ATTACK ? TEL_FLANK : TEL_FULL, 0);
         } else {
             game_station(i, &tx, &ty);
@@ -506,6 +715,16 @@ void game_tick(void)
     drop_f = 0;
     if (fire_f) spawn_torp();
     fire_f = 0;
+    if (gun_f && conn_on && player == ROLE_ESCORT && !cool_gun && !shell.on && !sunk[selected]) {
+        shell.on = 1;
+        shell.x = ships[selected].x;
+        shell.y = ships[selected].y;
+        shell.hdg = ships[selected].hdg;
+        shell.life = 32;
+        cool_gun = 20;
+        snd_launch = 1;
+    }
+    gun_f = 0;
 
     vel(0, tel_fp[TEL_HALF], &cvx, &cvy);
     scroll_x += cvx / FP;
@@ -515,11 +734,16 @@ void game_tick(void)
         contact_y -= cvy;
     }
     for (i = 0; i < N_SHIP; i++) {
-        vel(ships[i].hdg, tel_fp[ships[i].tel], &vx, &vy);
+        {
+            unsigned char tel = ships[i].tel;
+            if (i == UB && depth >= 8 && tel_fp[tel] > tel_fp[TEL_SLOW]) tel = TEL_SLOW;
+            vel(ships[i].hdg, tel_fp[tel], &vx, &vy);
+        }
         ships[i].x += vx - cvx;
         ships[i].y += vy - cvy;
         clamp_ship(&ships[i]);
     }
+    wake_drop();
     for (i = 0; i < N_TORP; i++) {
         unsigned char t;
         if (!torp[i].on) continue;
@@ -549,8 +773,35 @@ void game_tick(void)
             if (hits >= 3) sink(UB);
         }
     }
+    if (shell.on) {
+        vel(shell.hdg, 96, &vx, &vy);
+        shell.x += vx - cvx;
+        shell.y += vy - cvy;
+        if (shell.life) shell.life--;
+        if (!shell.life) shell.on = 0;
+        else if (!sunk[UB] && depth < 8 &&
+                 near_px(shell.x, shell.y, ships[UB].x, ships[UB].y, 14)) {
+            shell.on = 0;
+            snd_boom = 1;
+            if (hits < 255) hits++;
+            if (hits >= 3) sink(UB);
+        }
+    }
+    if (!sunk[UB] && depth < 8 && !cool_ram) {
+        for (i = 0; i < N_ESCORT; i++) {
+            if (sunk[i]) continue;
+            if (!near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 18)) continue;
+            cool_ram = 40;
+            snd_boom = 1;
+            if (hits < 255) hits++;
+            if (hits >= 3) sink(UB);
+            break;
+        }
+    }
     if (cool_fire) cool_fire--;
     if (cool_drop) cool_drop--;
+    if (cool_gun) cool_gun--;
+    if (cool_ram) cool_ram--;
     for (i = 0; i < N_ESCORT; i++) if (cool_dc[i]) cool_dc[i]--;
     ticks++;
 }
@@ -571,7 +822,7 @@ unsigned char game_export_escort(unsigned char seq, unsigned char *b)
     b[0] = (unsigned char)((helm_e & 3) | ((ships[selected].tel & 7) << 2) |
                            ((selected & 3) << 5) | (ping_f ? 0x80 : 0));
     b[1] = pack_orders();
-    b[2] = (unsigned char)((drop_f ? 1 : 0) | ((seq & 15) << 4));
+    b[2] = (unsigned char)((drop_f ? 1 : 0) | (gun_f ? 4 : 0) | ((seq & 15) << 4));
     b[3] = (unsigned char)game_checksum();
     return b[2];
 }
@@ -579,7 +830,7 @@ unsigned char game_export_escort(unsigned char seq, unsigned char *b)
 unsigned char game_export_uboat(unsigned char seq, unsigned char *b)
 {
     b[0] = (unsigned char)((helm_u & 3) | ((ships[UB].tel & 7) << 2) | (fire_f ? 0x80 : 0));
-    b[1] = 0;
+    b[1] = (unsigned char)(planes + 2);
     b[2] = (unsigned char)((seq & 15) << 4);
     b[3] = (unsigned char)game_checksum();
     return b[2];
@@ -592,10 +843,11 @@ unsigned char game_import_escort(const unsigned char *b)
     selected = (unsigned char)((b[0] >> 5) & 3);
     if (selected >= N_ESCORT) selected = 0;
     ships[selected].tel = (unsigned char)((b[0] >> 2) & 7);
-    if (ships[selected].tel > TEL_FLANK) ships[selected].tel = TEL_FLANK;
+    if (ships[selected].tel > TEL_FULL_ASTERN) ships[selected].tel = TEL_FULL_ASTERN;
     unpack_orders(b[1]);
     if (b[0] & 0x80) ping_f = 1;
     if (b[2] & 1) drop_f = 1;
+    if (b[2] & 4) gun_f = 1;
     return ok;
 }
 
@@ -604,8 +856,9 @@ unsigned char game_import_uboat(const unsigned char *b)
     unsigned char ok = (unsigned char)(b[3] == (unsigned char)game_checksum());
     helm_u = (unsigned char)(b[0] & 3);
     ships[UB].tel = (unsigned char)((b[0] >> 2) & 7);
-    if (ships[UB].tel > TEL_FLANK) ships[UB].tel = TEL_FLANK;
+    if (ships[UB].tel > TEL_FULL_ASTERN) ships[UB].tel = TEL_FULL_ASTERN;
     if (b[0] & 0x80) fire_f = 1;
+    game_set_planes((signed char)((signed char)b[1] - 2));
     return ok;
 }
 
@@ -622,6 +875,9 @@ unsigned int game_checksum(void)
     }
     for (i = 0; i < N_ESCORT; i++) s = s * 33u + orders[i];
     s = s * 33u + tubes;
+    s = s * 33u + shell.on;
+    s = s * 33u + (unsigned int)shell.x;
+    s = s * 33u + (unsigned int)shell.y;
     s = s * 33u + hits;
     s = s * 33u + tonnage;
     s = s * 33u + (unsigned int)scroll_x;

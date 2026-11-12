@@ -14,20 +14,77 @@
 #include <x16lib/audio.h>
 #include <x16lib/display.h>
 #include <x16lib/fileio.h>
+#include <x16lib/bank.h>
 #include <x16lib/layers.h>
 #include <x16lib/vera.h>
+#include <x16lib/vram.h>
+#include <x16lib/tilemap.h>
+#include <x16lib/sprites.h>
 #include "game.h"
 #include "link.h"
 #include "platform.h"
 
 #define VRAM_TILES  0x00000UL
 #define VRAM_MAP    0x00400UL
-#define VRAM_SPR    0x04000UL
+#define VRAM_MARKS  0x04000UL
+#define VRAM_HULL   0x05000UL
 #define MAP_TILES   64
-#define SPR_BYTES   128
-#define IDX_SPR0    ((unsigned int)(VRAM_SPR >> 5))
-#define SPR_SIZE_16 0x50
-#define SPR_Z       0x08
+#define MAP_PX      480
+#define MAP_MID     240
+#define HULL_B      2048u
+#define IDX_MARK    ((unsigned int)(VRAM_MARKS >> 5))
+#define IDX_HULL0   ((unsigned int)(VRAM_HULL >> 5))
+/* Packed sprite byte 7 from the library size codes. Palette stays in the low nibble. */
+#define PX8         SPR_B7(SPR_SIZE_8, SPR_SIZE_8, 0)
+#define PX16        SPR_B7(SPR_SIZE_16, SPR_SIZE_16, 0)
+#define PX32        SPR_B7(SPR_SIZE_32, SPR_SIZE_32, 0)
+#define PX64        SPR_B7(SPR_SIZE_64, SPR_SIZE_64, 0)
+/* Between the layers, so an opaque hub cell covers a sprite and the
+ * transparent map cells let the hulls show. */
+#define SPR_Z       SPR_B6(SPR_Z_BETWEEN_L0_L1, 0, 0, 0)
+#define VRAM_ZOOM   0x04200UL
+/* Between the sea map ($02400) and the crosshair ($03800). */
+#define VRAM_SCOPE  0x02400UL
+#define IDX_BEAM    ((unsigned int)(VRAM_SCOPE >> 5))
+#define IDX_FACE    ((unsigned int)((VRAM_SCOPE + 2048UL) >> 5))
+#define IDX_BLIP    ((unsigned int)((VRAM_SCOPE + 4096UL) >> 5))
+#define IDX_HOSTILE ((unsigned int)(IDX_BLIP + 4u))
+#define IDX_FOAM    ((unsigned int)((VRAM_SCOPE + 4352UL) >> 5))
+#define IDX_RING    ((unsigned int)(IDX_FOAM + 4u))
+#define SPR_N       96
+#define BANK_ESCORT 1
+#define BANK_MERCH  5
+#define BANK_TANKER 9
+#define BANK_UBOAT  13
+#define BANK_WAKE   17
+#define BANK_MID    21
+#define BANK_MIDWAKE 25
+#define BANK_TINY   26
+#define BANK_TINYWAKE 27
+#define BANK_CHARGE 28
+/* Sixteen 64px profile aspects per kind. Four frames to a bank, same as the hulls. */
+#define BANK_PROF   29
+#define HUB_BG      2
+#define VIEW_MAP    0
+#define VIEW_BRIDGE 1
+#define VIEW_GLASS  2
+#define VIEW_ROOM   3
+#define VRAM_WEAP   0x18000UL
+#define VRAM_DC     0x19200UL
+#define VRAM_GAUGE  0x19400UL
+#define VRAM_CROSS  0x03800UL
+#define VRAM_NUM    0x04C00UL
+#define IDX_EEL     ((unsigned int)(VRAM_WEAP >> 5))
+#define IDX_TWAKE   ((unsigned int)((VRAM_WEAP + 2048UL) >> 5))
+#define IDX_COLUMN  ((unsigned int)((VRAM_WEAP + 4096UL) >> 5))
+#define IDX_DC      ((unsigned int)(VRAM_DC >> 5))
+#define IDX_DIAL    ((unsigned int)(VRAM_GAUGE >> 5))
+#define IDX_NEEDLE  ((unsigned int)((VRAM_GAUGE + 2048UL) >> 5))
+#define IDX_LAMP    ((unsigned int)((VRAM_GAUGE + 6144UL) >> 5))
+#define IDX_CROSS   ((unsigned int)(VRAM_CROSS >> 5))
+#define IDX_ZWAKE   ((unsigned int)((VRAM_ZOOM + 2048UL) >> 5))
+#define IDX_NUM16   ((unsigned int)(VRAM_NUM >> 5))
+#define IDX_NUM8    ((unsigned int)((VRAM_NUM + 512UL) >> 5))
 
 #define ST_TITLE 0
 #define ST_HOST  1
@@ -35,8 +92,10 @@
 #define ST_PLAY  3
 #define ST_OVER  4
 
-static const unsigned int drone_f[5] = { 0, 180, 360, 620, 980 };
-static const char *tel_name[5] = { "STOP", "SLOW", "HALF", "FULL", "FLANK" };
+static const unsigned int drone_f[8] = { 0, 180, 360, 620, 980, 120, 180, 280 };
+static const char *tel_name[8] = {
+    "STOP", "SLOW", "HALF", "FULL", "FLANK", "DEAD SLOW", "ASTERN", "FULL ASTERN"
+};
 static const char ord_ch[3] = { 'P', 'H', 'A' };
 
 static unsigned char gfx_ok;
@@ -47,112 +106,888 @@ static unsigned char hlen;
 
 #define load_vram(name, addr) ((unsigned char)(file_load((name), FILE_TO_VRAM(addr), (unsigned int)(addr)) == FILE_OK))
 
-static void write_sprite(unsigned char id, unsigned int idx, int px, int py, unsigned char show)
+/* Pixels astern of a 16px torpedo, bow-north frame 0, then clockwise. */
+static const signed char astern_x[16] = {
+    0, -3, -5, -6, -7, -6, -5, -3, 0, 3, 5, 6, 7, 6, 5, 3
+};
+static const signed char astern_y[16] = {
+    7, 6, 5, 3, 0, -3, -5, -6, -7, -6, -5, -3, 0, 3, 5, 6
+};
+static unsigned int dc_off[4];
+static unsigned char cache[22];
+static unsigned char cache_bank[22];
+/* Last attribute written. A repeat is not sent, so a still sprite is not
+ * rewritten while the raster is reading it. */
+static unsigned int spr_idx[SPR_N];
+static int spr_x[SPR_N], spr_y[SPR_N];
+static unsigned char spr_b6[SPR_N], spr_b7[SPR_N];
+static unsigned char view, zoom, look_ofs, chrome;
+static unsigned char hub_ready;
+static void hub_forget(void);
+
+static void sprite_commit(unsigned char id, unsigned int idx, int px, int py,
+                          unsigned char b6, unsigned char b7)
 {
-    VERA.control = 0;
-    vera_set_addr16((unsigned int)(VERA_SPRATTR_ADDR + (unsigned int)id * 8u),
-                    (unsigned char)(0x10 | (unsigned char)(VERA_SPRATTR_ADDR >> 16)));
-    VERA.data0 = (unsigned char)(idx & 0xFF);
-    VERA.data0 = (unsigned char)((idx >> 8) & 0x0F);
-    VERA.data0 = (unsigned char)(px & 0xFF);
-    VERA.data0 = (unsigned char)((px >> 8) & 0x03);
-    VERA.data0 = (unsigned char)(py & 0xFF);
-    VERA.data0 = (unsigned char)((py >> 8) & 0x03);
-    VERA.data0 = show ? SPR_Z : 0;
-    VERA.data0 = SPR_SIZE_16;
+    if (id >= SPR_N) return;
+    if (spr_b7[id] != 0xFF && spr_idx[id] == idx && spr_x[id] == px && spr_y[id] == py
+        && spr_b6[id] == b6 && spr_b7[id] == b7)
+        return;
+    spr_idx[id] = idx;
+    spr_x[id] = px;
+    spr_y[id] = py;
+    spr_b6[id] = b6;
+    spr_b7[id] = b7;
+    if (!b6) sprite_hide(id);
+    else sprite_put(id, idx, px, py, b6, b7);
+}
+
+static void write_sprite(unsigned char id, unsigned int idx, int px, int py,
+                         unsigned char show, unsigned char size)
+{
+    unsigned char b6 = show ? (unsigned char)(SPR_Z | ((show & 2) ? 1 : 0)) : 0;
+    sprite_commit(id, idx, px, py, b6, size);
+}
+
+static void write_front(unsigned char id, unsigned int idx, int px, int py, unsigned char size)
+{
+    sprite_commit(id, idx, px, py, 0x0C, size);
+}
+
+static void cache_clear(void)
+{
+    unsigned char i;
+    unsigned char d;
+    for (i = 0; i < 22; i++) {
+        cache[i] = 0xFF;
+        cache_bank[i] = 0xFF;
+    }
+    for (d = 0; d < 4; d++) dc_off[d] = 0xFFFF;
+}
+
+static void blit_frame(unsigned char slot, unsigned char bank0, unsigned char frame)
+{
+    unsigned char old;
+    unsigned char sub;
+    unsigned int src;
+    if (slot >= 22 || (cache[slot] == frame && cache_bank[slot] == bank0)) return;
+    cache[slot] = frame;
+    cache_bank[slot] = bank0;
+    sub = (unsigned char)(frame & 3);
+    src = (unsigned int)(X16_BANK_WIN + (unsigned int)sub * HULL_B);
+    old = X16_RAM_BANK;
+    X16_RAM_BANK = (unsigned char)(bank0 + (frame >> 2));
+    vram_upload(VRAM_HULL + (unsigned long)slot * HULL_B, (const unsigned char *)src, HULL_B);
+    X16_RAM_BANK = old;
+}
+
+/* One frame of a 32x32 or 16x16 sheet. The whole sheet fits in one bank. */
+static void blit_span(unsigned char slot, unsigned char bank, unsigned char frame, unsigned int bytes)
+{
+    unsigned char old;
+    unsigned int src;
+    if (slot >= 22) return;
+    if (cache[slot] == frame && cache_bank[slot] == bank) return;
+    cache[slot] = frame;
+    cache_bank[slot] = bank;
+    src = (unsigned int)(X16_BANK_WIN + (unsigned int)frame * bytes);
+    old = X16_RAM_BANK;
+    X16_RAM_BANK = bank;
+    vram_upload(VRAM_HULL + (unsigned long)slot * bytes, (const unsigned char *)src, bytes);
+    X16_RAM_BANK = old;
+}
+
+static void blit_dc(unsigned char i, unsigned int off)
+{
+    unsigned char old;
+    unsigned int src;
+    if (i >= 4 || dc_off[i] == off) return;
+    dc_off[i] = off;
+    src = (unsigned int)(X16_BANK_WIN + off);
+    old = X16_RAM_BANK;
+    X16_RAM_BANK = BANK_CHARGE;
+    vram_upload(VRAM_DC + (unsigned long)i * 128ul, (const unsigned char *)src, 128u);
+    X16_RAM_BANK = old;
+}
+
+static unsigned char sky_rows;
+
+static unsigned char sea_tile(unsigned char x, unsigned char y)
+{
+    unsigned char h;
+    if (y < sky_rows) return (unsigned char)((unsigned char)(y + 1) == sky_rows ? 5 : 4);
+    h = (unsigned char)((x * 13 + y * 7) & 31);
+    if (h == 0) return 1;
+    if (h == 1) return 2;
+    return 0;
 }
 
 static void fill_sea(void)
 {
-    unsigned char x, y;
-    vera_set_addr(VRAM_MAP);
-    for (y = 0; y < MAP_TILES; y++) {
-        for (x = 0; x < MAP_TILES; x++) {
-            VERA.data0 = (unsigned char)((x + y) & 3);
-            VERA.data0 = 0;
-        }
-    }
+    tilemap_stream(VRAM_MAP, MAP_TILES, MAP_TILES, MAP_TILES, MAP_TILES, sea_tile, 0, 0, 0);
 }
 
-static void draw_at(unsigned char id, unsigned char image, int x, int y)
+static void focus_ship(int *x, int *y)
 {
-    int px = x / FP - 8;
-    int py = y / FP - 8;
-    unsigned char show = (unsigned char)(px >= 0 && py >= 0 && px < 640 && py < 480);
-    write_sprite(id, (unsigned int)(IDX_SPR0 + (unsigned int)image * (SPR_BYTES / 32)), px, py, show);
+    unsigned char i = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
+    *x = ships[i].x;
+    *y = ships[i].y;
 }
 
-static void hide_from(unsigned char id)
+static void place(unsigned char id, unsigned int idx, int wx, int wy, int camx, int camy,
+                  int ox, int oy, unsigned char size)
+{
+    int sc = (view == VIEW_MAP) ? (1 << zoom) : 1;
+    /* Palette lives in the low nibble. The gold escort sets that bit, and it
+     * must not be read as a bigger sprite or her hull leaves her wake behind. */
+    unsigned char dim = (unsigned char)(size & 0xF0);
+    int half = (dim == (unsigned char)(PX16 & 0xF0)) ? 8
+             : (dim == (unsigned char)(PX32 & 0xF0)) ? 16
+             : (dim == (unsigned char)(PX64 & 0xF0)) ? 32 : 4;
+    int px = (wx - camx) / FP / sc + MAP_MID - half + ox / sc;
+    int py = (wy - camy) / FP / sc + MAP_MID - half + oy / sc;
+    int edge = half * 2;
+    unsigned char show = (unsigned char)(px >= -4 && py >= -4 &&
+        px <= MAP_PX - edge && py <= MAP_PX - edge);
+    write_sprite(id, idx, px, py, show, size);
+}
+
+static unsigned char bank_of(unsigned char kind)
+{
+    if (kind == SHIP_ESCORT) return BANK_ESCORT;
+    if (kind == SHIP_TANKER) return BANK_TANKER;
+    if (kind == SHIP_UBOAT) return BANK_UBOAT;
+    return BANK_MERCH;
+}
+
+static unsigned char kind_i(unsigned char kind)
+{
+    if (kind == SHIP_ESCORT) return 0;
+    if (kind == SHIP_MERCHANT) return 1;
+    if (kind == SHIP_TANKER) return 2;
+    return 3;
+}
+
+static void hide_sprites(void)
 {
     unsigned char i;
-    for (i = id; i < 28; i++) write_sprite(i, IDX_SPR0, 0, 0, 0);
+    for (i = 0; i < SPR_N; i++)
+        write_sprite(i, IDX_MARK, 0, 0, 0, PX16);
+}
+
+/* Last graticule marks. Rewritten only when a tick actually moves. */
+static unsigned char mark_x[12], mark_y[12], mark_on[12];
+static char mark_t[12][4];
+
+static void wipe_mark(unsigned char n)
+{
+    unsigned char k;
+    if (!mark_on[n]) return;
+    bgcolor(COLOR_BLACK);
+    for (k = 0; k < 4; k++)
+        cputcxy((unsigned char)(mark_x[n] + k), mark_y[n], ' ');
+    mark_on[n] = 0;
+}
+
+static void put_mark(unsigned char n, unsigned char x, unsigned char y, int v)
+{
+    char d[4];
+    unsigned int u;
+    unsigned char k;
+    if (v < 0) { d[0] = '-'; v = -v; }
+    else d[0] = ' ';
+    if (v > 999) v = 999;
+    u = (unsigned int)v;
+    d[1] = (char)('0' + (u / 100) % 10);
+    d[2] = (char)('0' + (u / 10) % 10);
+    d[3] = (char)('0' + u % 10);
+    if (mark_on[n] && mark_x[n] == x && mark_y[n] == y &&
+        mark_t[n][0] == d[0] && mark_t[n][1] == d[1] &&
+        mark_t[n][2] == d[2] && mark_t[n][3] == d[3])
+        return;
+    wipe_mark(n);
+    bgcolor(COLOR_BLACK);
+    textcolor(COLOR_WHITE);
+    for (k = 0; k < 4; k++) {
+        cputcxy((unsigned char)(x + k), y, d[k]);
+        mark_t[n][k] = d[k];
+    }
+    mark_x[n] = x;
+    mark_y[n] = y;
+    mark_on[n] = 1;
+}
+
+static void graticule(int camx, int camy)
+{
+    unsigned char used;
+    int scale = 1 << zoom;
+    int step = 64 << zoom;
+    int east0 = camx / FP + scroll_x + 4096;
+    int north0 = -(camy / FP) - scroll_y + 4096;
+    int base, k, g, s;
+
+    used = 0;
+    base = east0 - (east0 % step) - step * 3;
+    for (k = 0; k < 8 && used < 4; k++) {
+        g = base + k * step;
+        s = MAP_MID + (g - east0) / scale;
+        if (s < 8 || s > 400) continue;
+        put_mark(used, (unsigned char)(s / 8), 0, g - 4096);
+        used++;
+    }
+    while (used < 4) wipe_mark(used++);
+    base = north0 - (north0 % step) - step * 3;
+    for (k = 0; k < 8 && used < 8; k++) {
+        g = base + k * step;
+        s = MAP_MID + (north0 - g) / scale;
+        if (s < 16 || s > 440) continue;
+        put_mark(used, 0, (unsigned char)(s / 8), g - 4096);
+        used++;
+    }
+    while (used < 12) wipe_mark(used++);
+}
+
+static void clear_graticule(void)
+{
+    unsigned char n;
+    for (n = 0; n < 12; n++) wipe_mark(n);
+}
+
+static void paint_chrome(void)
+{
+    unsigned char r;
+    if (chrome == view) return;
+    clear_graticule();
+    /* Ahead views keep a sky band in the tile map so the horizon stays put
+     * while the sea scrolls underneath it. The chart is sea all the way up. */
+    sky_rows = (view == VIEW_BRIDGE || view == VIEW_GLASS) ? 16 : 0;
+    fill_sea();
+    if (view == VIEW_MAP) {
+        bgcolor(COLOR_BLACK);
+        for (r = 0; r < 60; r++)
+            cclearxy(0, r, 60);
+    } else if (view == VIEW_BRIDGE) {
+        bgcolor(HUB_BG);
+        for (r = 0; r < 14; r++) cclearxy(0, r, 60);
+        /* The window is clear so the sea and the hulls show, and the
+         * bulkhead covers anything outside it. */
+        bgcolor(COLOR_BLACK);
+        for (r = 14; r < 36; r++) cclearxy(0, r, 60);
+        bgcolor(HUB_BG);
+        for (r = 36; r < 60; r++) cclearxy(0, r, 60);
+    } else if (view == VIEW_GLASS) {
+        unsigned char col, row;
+        for (row = 0; row < 60; row++) {
+            for (col = 0; col < 60; col++) {
+                int dx, dy, in;
+                unsigned char bg;
+                if (game_player() == ROLE_UBOAT) {
+                    dx = (int)col - 29; dy = (int)row - 30;
+                    in = dx * dx + dy * dy <= 18 * 18;
+                } else {
+                    dx = (int)col - 16; dy = (int)row - 30;
+                    in = dx * dx + dy * dy <= 14 * 14;
+                    dx = (int)col - 42;
+                    in = in || (dx * dx + dy * dy <= 14 * 14);
+                }
+                /* Inside the glass is clear. Hulls sit between the layers,
+                 * so the mask hides whatever falls outside the circle. */
+                bg = in ? COLOR_BLACK : HUB_BG;
+                bgcolor(bg);
+                cclearxy(col, row, 1);
+            }
+        }
+        if (game_player() == ROLE_UBOAT) {
+            bgcolor(8);
+            textcolor(COLOR_WHITE);
+            for (col = 14; col < 45; col += 2) cputcxy(col, 30, '-');
+            for (row = 16; row < 45; row += 2) cputcxy(29, row, '+');
+            cputcxy(29, 30, '+');
+        }
+    } else {
+        bgcolor(HUB_BG);
+        for (r = 0; r < 60; r++) cclearxy(0, r, 60);
+        textcolor(COLOR_WHITE);
+        cputsxy(6, 2, "BEARING");
+        cputsxy(22, 2, "DEPTH");
+        cputsxy(40, 2, "PLANES");
+        cputsxy(6, 24, "TUBES");
+        cputsxy(6, 36, "BATTERY");
+        cputsxy(6, 48, "Y RISE   U DIVE");
+    }
+    chrome = view;
+}
+
+static void draw_map(int camx, int camy)
+{
+    unsigned char i;
+    int x, y;
+    int sc = 1 << zoom;
+    int hs = camx / FP / sc - MAP_MID + scroll_x / sc;
+    int vs = camy / FP / sc - MAP_MID + scroll_y / sc;
+    layer_scroll(0, (unsigned int)hs, (unsigned int)vs);
+    for (i = 0; i < N_SHIP; i++) {
+        unsigned char frame, kind;
+        unsigned int idx;
+        unsigned char sz;
+        if (!game_show_ship(i)) {
+            write_sprite(i, 0, 0, 0, 0, 0);
+            write_sprite((unsigned char)(11 + i), 0, 0, 0, 0, 0);
+            if (i < N_ESCORT) write_sprite((unsigned char)(64 + i), 0, 0, 0, 0, 0);
+            continue;
+        }
+        frame = (unsigned char)(ships[i].hdg >> 4);
+        kind = kind_i(ships[i].kind);
+        if (zoom == 0) {
+            blit_frame(i, bank_of(ships[i].kind), frame);
+            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 64u);
+            sz = PX64;
+        } else if (zoom == 1) {
+            blit_span(i, (unsigned char)(BANK_MID + kind), frame, 512u);
+            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 16u);
+            sz = PX32;
+        } else if (zoom == 2) {
+            blit_span(i, BANK_TINY, (unsigned char)(kind * 16u + frame), 128u);
+            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 4u);
+            sz = PX16;
+        } else {
+            idx = (unsigned int)((VRAM_ZOOM >> 5) + (unsigned int)kind * 16u + frame);
+            sz = PX8;
+        }
+        write_sprite((unsigned char)(11 + i), 0, 0, 0, 0, 0);
+        if (game_player() == ROLE_ESCORT && i == selected && i < N_ESCORT)
+            sz = (unsigned char)(sz | 1);
+        place(i, idx, ships[i].x, ships[i].y, camx, camy, 0, 0, sz);
+        if (i < N_ESCORT) {
+            unsigned char nsz = (zoom >= 2) ? PX8 : PX16;
+            unsigned int nidx = (zoom >= 2)
+                ? (unsigned int)(IDX_NUM8 + i)
+                : (unsigned int)(IDX_NUM16 + (unsigned int)i * 4u);
+            place((unsigned char)(64 + i), nidx, ships[i].x, ships[i].y, camx, camy,
+                  -28 * sc, -6 * sc, nsz);
+        }
+    }
+    for (i = 0; i < 8; i++) {
+        int fx, fy;
+        if (game_wake_at(i, &fx, &fy))
+            place((unsigned char)(32 + i), IDX_RING, fx, fy, camx, camy, 0, 0, PX32);
+        else
+            write_sprite((unsigned char)(32 + i), 0, 0, 0, 0, 0);
+    }
+    for (i = 0; i < N_TORP; i++) {
+        unsigned char face;
+        if (!game_torp_on(i)) {
+            write_sprite((unsigned char)(22 + i), 0, 0, 0, 0, 0);
+            write_sprite((unsigned char)(60 + i), 0, 0, 0, 0, 0);
+            continue;
+        }
+        face = (unsigned char)(game_torp_hdg(i) >> 4);
+        game_torp_xy(i, &x, &y);
+        place((unsigned char)(22 + i),
+              (unsigned int)(IDX_EEL + (unsigned int)face * 4u),
+              x, y, camx, camy, 0, 0, PX16);
+        place((unsigned char)(60 + i),
+              (unsigned int)(IDX_TWAKE + (unsigned int)face * 4u),
+              x, y, camx, camy,
+              (int)astern_x[face] * 2, (int)astern_y[face] * 2, PX16);
+    }
+    for (i = 0; i < N_DC; i++) {
+        unsigned char life, face;
+        unsigned int idx;
+        unsigned char sz;
+        int oy;
+        if (!game_dc_on(i)) {
+            write_sprite((unsigned char)(26 + i), 0, 0, 0, 0, 0);
+            continue;
+        }
+        life = game_dc_life(i);
+        face = (unsigned char)(game_dc_hdg(i) >> 4);
+        game_dc_xy(i, &x, &y);
+        oy = 0;
+        sz = PX16;
+        if (life > 21) {
+            blit_dc(i, (unsigned int)face * 128u);
+            idx = (unsigned int)(IDX_DC + (unsigned int)i * 4u);
+            oy = (int)(28 - life) * 5;
+        } else if (life > 14) {
+            blit_dc(i, 2048u + (unsigned int)face * 128u);
+            idx = (unsigned int)(IDX_DC + (unsigned int)i * 4u);
+        } else if (life > 8) {
+            write_sprite((unsigned char)(26 + i), 0, 0, 0, 0, 0);
+            continue;
+        } else {
+            idx = IDX_COLUMN;
+            sz = PX32;
+        }
+        place((unsigned char)(26 + i), idx, x, y, camx, camy, 0, oy, sz);
+    }
+    if (game_show_contact(&x, &y))
+        place(30, IDX_MARK + 4u, x, y, camx, camy, 0, 0, PX16);
+    else
+        write_sprite(30, IDX_MARK, 0, 0, 0, PX16);
+    if (game_shell_on()) {
+        game_shell_xy(&x, &y);
+        place(59, IDX_HOSTILE, x, y, camx, camy, 0, 0, PX16);
+    } else {
+        write_sprite(59, 0, 0, 0, 0, 0);
+    }
+    graticule(camx, camy);
+}
+
+/* sin of heading/16, 0 = north, clockwise, scale 127. */
+static const signed char sin16[16] = {
+    0, 49, 90, 117, 127, 117, 90, 49, 0, -49, -90, -117, -127, -117, -90, -49
+};
+
+static void look_axes(int dx, int dy, int s, int c, int *ahead, int *side)
+{
+    *ahead = (int)(((long)dx * s - (long)dy * c) >> 7);
+    *side = (int)(((long)dx * c + (long)dy * s) >> 7);
+}
+
+static unsigned char project_ahead(int wx, int wy, int camx, int camy, int s, int c,
+                                  int horizon, int reach, int mag, int hot, int *px, int *py);
+
+static unsigned char draw_ahead_one(unsigned char i, int camx, int camy, int s, int c,
+                                   int horizon, int reach, int mag, unsigned char look,
+                                   unsigned char slot)
+{
+    int px, py;
+    unsigned char face;
+    unsigned int idx;
+    if (slot >= 8 || !game_show_ship(i)) return slot;
+    if ((game_player() == ROLE_UBOAT && i == N_SHIP - 1) ||
+        (game_player() == ROLE_ESCORT && i == selected))
+        return slot;
+    if (!project_ahead(ships[i].x, ships[i].y, camx, camy, s, c, horizon, reach, mag, 32, &px, &py))
+        return slot;
+    /* One of sixteen painted aspects, copied out of banked RAM into this slot. */
+    face = (unsigned char)(((ships[i].hdg + 128 - look) >> 4) & 15);
+    blit_frame(slot, (unsigned char)(BANK_PROF + (unsigned char)(kind_i(ships[i].kind) * 4)), face);
+    idx = (unsigned int)(IDX_HULL0 + (unsigned int)slot * 64u);
+    sprite_commit(slot, idx, px, py, SPR_Z, PX64);
+    return (unsigned char)(slot + 1);
+}
+
+static unsigned char project_ahead(int wx, int wy, int camx, int camy, int s, int c,
+                                  int horizon, int reach, int mag, int hot,
+                                  int *px, int *py)
+{
+    int dx = (wx - camx) >> 4;
+    int dy = (wy - camy) >> 4;
+    int ahead, side;
+    look_axes(dx, dy, s, c, &ahead, &side);
+    if (ahead < -48 || ahead > reach || side > 240 || side < -240) return 0;
+    if (ahead < 0) ahead = 0;
+    if (mag > 1) side >>= 1;
+    *px = MAP_MID + side - hot;
+    *py = horizon + ((reach - ahead) >> 3) - hot;
+    if (*px < -16 || *px >= MAP_PX) return 0;
+    return 1;
+}
+
+static void draw_ahead(int camx, int camy, unsigned char look)
+{
+    unsigned char i, slot;
+    unsigned char li = (unsigned char)(look >> 4);
+    unsigned char who = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
+    int s = sin16[li];
+    int c = sin16[(li + 4) & 15];
+    int horizon = (view == VIEW_GLASS) ? 200 : 168;
+    int reach = (view == VIEW_GLASS) ? 420 : 280;
+    int mag = (view == VIEW_GLASS) ? 2 : 1;
+    int mvx, mvy, along, across;
+    static int sea_u, acc_u;
+    /* Sideways drift follows your speed across the look. The horizon row
+     * stays fixed; only the sea under it moves. */
+    game_water(who, &mvx, &mvy);
+    look_axes(mvx, mvy, s, c, &along, &across);
+    acc_u += across + (along >> 1);
+    sea_u += acc_u >> 6;
+    acc_u = (int)(acc_u & 63);
+    layer_scroll(0, (unsigned int)sea_u, (unsigned int)(256 - horizon));
+    slot = 0;
+    if (game_player() == ROLE_ESCORT)
+        slot = draw_ahead_one((unsigned char)(N_SHIP - 1), camx, camy, s, c, horizon, reach, mag, look, slot);
+    for (i = 0; i < N_SHIP && slot < 8; i++) {
+        if (game_player() == ROLE_ESCORT && i == N_SHIP - 1) continue;
+        slot = draw_ahead_one(i, camx, camy, s, c, horizon, reach, mag, look, slot);
+    }
+    while (slot < 8) {
+        write_sprite(slot, 0, 0, 0, 0, 0);
+        slot++;
+    }
+    for (i = 0; i < N_TORP; i++) {
+        int x, y, px, py;
+        unsigned char face;
+        if (!game_torp_on(i)) {
+            write_sprite((unsigned char)(8 + i), 0, 0, 0, 0, 0);
+            continue;
+        }
+        face = (unsigned char)((game_torp_hdg(i) - look) >> 4);
+        game_torp_xy(i, &x, &y);
+        if (!project_ahead(x, y, camx, camy, s, c, horizon, reach, mag, 8, &px, &py)) {
+            write_sprite((unsigned char)(8 + i), 0, 0, 0, 0, 0);
+            continue;
+        }
+        sprite_commit((unsigned char)(8 + i), (unsigned int)(IDX_TWAKE + (unsigned int)face * 4u), px, py, SPR_Z, PX16);
+    }
+    if (view == VIEW_GLASS && game_player() == ROLE_UBOAT)
+        write_front(40, IDX_CROSS, 204, 212, PX64);
+    else
+        write_sprite(40, IDX_CROSS, 0, 0, 0, PX64);
+}
+
+static void draw_room(void)
+{
+    unsigned char i, tubes, face;
+    signed char pl;
+    write_sprite(40, IDX_CROSS, 0, 0, 0, PX64);
+    write_front(41, IDX_DIAL, 24, 32, PX64);
+    write_front(42, IDX_DIAL, 168, 32, PX64);
+    write_front(43, IDX_DIAL, 312, 32, PX64);
+    face = (unsigned char)(ships[N_SHIP - 1].hdg >> 5);
+    write_front(44, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 40, 48, PX32);
+    face = (unsigned char)((game_depth() * 7u) / 80u);
+    write_front(45, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 184, 48, PX32);
+    pl = game_planes_of();
+    face = (unsigned char)((pl + 2) * 2);
+    if (face > 7) face = 7;
+    write_front(46, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 328, 48, PX32);
+    tubes = game_tubes();
+    for (i = 0; i < 4; i++)
+        write_front((unsigned char)(47 + i),
+                    (unsigned int)(IDX_LAMP + (i < tubes ? 8u : 12u)),
+                    48 + (int)i * 40, 210, PX16);
+    for (i = 0; i < 8; i++)
+        write_front((unsigned char)(51 + i),
+                    (unsigned int)(IDX_LAMP + (game_battery() > (unsigned char)(i * 5) ? 0u : 4u)),
+                    48 + (int)i * 24, 310, PX16);
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cputcxy(23, 13, (char)('0' + (game_depth() / 10) % 10));
+    cputcxy(24, 13, (char)('0' + game_depth() % 10));
+    cputcxy(41, 13, (char)(pl < 0 ? '-' : '+'));
+    cputcxy(42, 13, (char)('0' + (pl < 0 ? -pl : pl)));
 }
 
 static void draw_world(void)
 {
-    unsigned char i;
-    int x, y;
-    unsigned char spr = 0;
-    for (i = 0; i < N_SHIP; i++) {
-        if (!game_show_ship(i)) continue;
-        draw_at(spr++, ship_sprite(i), ships[i].x, ships[i].y);
-    }
-    if (game_player() == ROLE_ESCORT && game_alive(selected))
-        draw_at(spr++, SPR_SELECT, ships[selected].x, ships[selected].y);
-    if (game_show_contact(&x, &y))
-        draw_at(spr++, SPR_BURST, x, y);
-    for (i = 0; i < N_TORP; i++) {
-        if (!game_torp_on(i)) continue;
-        game_torp_xy(i, &x, &y);
-        draw_at(spr++, SPR_EEL, x, y);
-    }
-    for (i = 0; i < N_DC; i++) {
-        if (!game_dc_on(i)) continue;
-        game_dc_xy(i, &x, &y);
-        draw_at(spr++, SPR_BURST, x, y);
-    }
-    hide_from(spr);
+    int camx, camy;
+    unsigned char look;
+    focus_ship(&camx, &camy);
+    if (view == VIEW_BRIDGE) look_ofs = 0;
+    look = (unsigned char)(ships[(game_player() == ROLE_UBOAT) ? (N_SHIP - 1) : selected].hdg + look_ofs);
+    paint_chrome();
+    if (view == VIEW_MAP) draw_map(camx, camy);
+    else if (view == VIEW_ROOM) draw_room();
+    else draw_ahead(camx, camy, look);
 }
 
-static void line_clear(unsigned char y)
+/* Color 0 is transparent on a tile layer, so the text background lets
+ * the sea and the ships show. The boot screen is opaque blue cells. */
+static void clear_screen(void)
 {
-    cclearxy(0, y, 80);
+    bgcolor(COLOR_BLACK);
+    textcolor(COLOR_WHITE);
+    clrscr();
+    cursor(0);
+    /* cc65 stores 'A' as screen code 0x41. ROM charset 2 is PET graphics,
+     * where that code is a symbol. Charset 1 is ISO, where it is a letter.
+     * $FF62 is screen_set_charset. */
+    __asm__("lda #1\njsr $FF62");
+    hub_forget();
+}
+
+static void hub_panel(void)
+{
+    unsigned char r;
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    for (r = 0; r < 60; r++)
+        cclearxy(60, r, 20);
+}
+
+static char hub_mem[8][20];
+
+static void hub_forget(void)
+{
+    unsigned char r, c;
+    for (r = 0; r < 8; r++)
+        for (c = 0; c < 20; c++) hub_mem[r][c] = 0;
+    hub_ready = 0;
+    chrome = 0xFF;
+}
+
+static void hub_row(unsigned char row)
+{
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cclearxy(60, row, 20);
+    gotoxy(60, row);
+}
+
+static void hub_set(unsigned char row, const char *s)
+{
+    unsigned char i;
+    char buf[20];
+    if (row >= 8) return;
+    for (i = 0; i < 19 && s[i]; i++) buf[i] = s[i];
+    for (; i < 19; i++) buf[i] = ' ';
+    buf[19] = 0;
+    for (i = 0; i < 20; i++)
+        if (hub_mem[row][i] != buf[i]) break;
+    if (i == 20) return;
+    for (i = 0; i < 20; i++) hub_mem[row][i] = buf[i];
+    hub_row(row);
+    cputs(buf);
+}
+
+static void hub_instructions(void)
+{
+    if (hub_ready) return;
+    hub_panel();
+    gotoxy(77, 6); cputs("RAD");
+    gotoxy(77, 22); cputs("SON");
+    gotoxy(77, 38); cputs("HYD");
+    if (game_player() == ROLE_UBOAT) {
+        hub_row(54); cputs("O MAP  B G  C ROOM");
+        hub_row(55); cputs("J L HELM  I K SPEED");
+        hub_row(56); cputs("F FIRE  Y U DIVE");
+        hub_row(57); cputs("N M LOOK IN GLASS");
+        hub_row(59); cputs("4 TONS TO WIN");
+    } else {
+        hub_row(54); cputs("O B G   Z ZOOM");
+        hub_row(55); cputs("1-4 []   P H A");
+        hub_row(56); cputs("S PING  D CHARGE");
+        hub_row(57); cputs("F DECK GUN");
+        hub_row(58); cputs("ARROWS HELM SPEED");
+        hub_row(59); cputs("N M STEER  LOOK G");
+    }
+    hub_ready = 1;
+    bgcolor(COLOR_BLACK);
+}
+
+/* Each face is four 64px quadrants, flipped around the shared corner. Up is the bow. */
+#define SCOPE_X 544
+#define RADAR_Y 112
+#define SONAR_Y 240
+#define HYDRO_Y 368
+
+static void scope_hide(unsigned char id)
+{
+    write_sprite(id, 0, 0, 0, 0, 0);
+}
+
+static unsigned char bearing16(int dx, int dy)
+{
+    unsigned char i, best = 0;
+    long best_dot = -200000L;
+    for (i = 0; i < 16; i++) {
+        long dot = (long)dx * (long)sin16[i] - (long)dy * (long)sin16[(i + 4) & 15];
+        if (dot > best_dot) { best_dot = dot; best = i; }
+    }
+    return best;
+}
+
+static int span_r(int dx, int dy, int limit, int radius)
+{
+    int ax = dx < 0 ? -dx : dx;
+    int ay = dy < 0 ? -dy : dy;
+    int hyp = (ax > ay) ? (ax + ay / 2) : (ay + ax / 2);
+    if (hyp > limit) return -1;
+    if (hyp < 4) hyp = 4;
+    return (int)((long)hyp * radius / limit);
+}
+
+static void scope_at(unsigned char slot, unsigned int idx, unsigned char li,
+                     int cx, int cy, int r, unsigned char sz, int hotspot)
+{
+    int x = cx + (int)sin16[li] * r / 127 - hotspot;
+    int y = cy - (int)sin16[(li + 4) & 15] * r / 127 - hotspot;
+    write_front(slot, idx, x, y, sz);
+}
+
+static void scope_ray(unsigned char slot, unsigned char li, int cx, int cy, int r)
+{
+    scope_at(slot, (unsigned int)(IDX_BEAM + (unsigned int)li * 4u), li, cx, cy, r, PX16, 8);
+}
+
+/* One quadrant, then the horizontal, vertical, and both-axis mirrors. */
+static void scope_quad(unsigned char slot, int cx, int cy)
+{
+    sprite_commit(slot, IDX_FACE, cx - 64, cy - 64, 0x0C, PX64);
+    sprite_commit((unsigned char)(slot + 1), IDX_FACE, cx, cy - 64, 0x0D, PX64);
+    sprite_commit((unsigned char)(slot + 2), IDX_FACE, cx - 64, cy, 0x0E, PX64);
+    sprite_commit((unsigned char)(slot + 3), IDX_FACE, cx, cy, 0x0F, PX64);
+}
+
+static void scope_blip(unsigned char slot, unsigned int idx, unsigned char li, int cx, int cy, int r)
+{
+    scope_at(slot, idx, li, cx, cy, r, PX16, 8);
+}
+
+static void draw_scopes(void)
+{
+    unsigned char i, nblip, focus, own, rel, li;
+    unsigned char radar_on;
+    int dx, dy, rr;
+    static unsigned char sweep;
+    if (stage != ST_PLAY && stage != ST_OVER) {
+        for (i = 68; i < SPR_N; i++) scope_hide(i);
+        return;
+    }
+    if (!gfx_ok) return;
+    focus = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
+    own = (unsigned char)(ships[focus].hdg >> 4);
+    radar_on = (unsigned char)(game_player() == ROLE_ESCORT || game_depth() == 0);
+    scope_quad(84, SCOPE_X, RADAR_Y);
+    scope_quad(88, SCOPE_X, SONAR_Y);
+    scope_quad(92, SCOPE_X, HYDRO_Y);
+    if (radar_on) {
+        sweep = (unsigned char)(sweep + 2);
+        li = (unsigned char)(sweep >> 4);
+        scope_ray(76, li, SCOPE_X, RADAR_Y, 8);
+        scope_ray(77, li, SCOPE_X, RADAR_Y, 30);
+        scope_ray(78, li, SCOPE_X, RADAR_Y, 52);
+        nblip = 0;
+        for (i = 0; i < N_SHIP && nblip < 8; i++) {
+            if (i == focus || !game_alive(i)) continue;
+            if (i == N_SHIP - 1 && game_depth() >= 8) continue;
+            dx = (int)(((long)ships[i].x - ships[focus].x) / FP);
+            dy = (int)(((long)ships[i].y - ships[focus].y) / FP);
+            rr = span_r(dx, dy, 340, 52);
+            if (rr < 0) continue;
+            rel = (unsigned char)((bearing16(dx, dy) - own) & 15);
+            scope_blip((unsigned char)(68 + nblip),
+                       (i == (unsigned char)(N_SHIP - 1) || game_player() == ROLE_UBOAT) ? IDX_HOSTILE : IDX_BLIP,
+                       rel, SCOPE_X, RADAR_Y, rr);
+            nblip++;
+        }
+        while (nblip < 8) scope_hide((unsigned char)(68 + nblip++));
+    } else {
+        for (i = 68; i < 79; i++) scope_hide(i);
+    }
+    if (game_player() == ROLE_ESCORT) {
+        int cx, cy;
+        scope_ray(80, 2, SCOPE_X, SONAR_Y, 40);
+        scope_ray(81, 14, SCOPE_X, SONAR_Y, 40);
+        if (game_show_contact(&cx, &cy)) {
+            dx = (int)(((long)cx - ships[focus].x) / FP);
+            dy = (int)(((long)cy - ships[focus].y) / FP);
+            rel = (unsigned char)((bearing16(dx, dy) - own) & 15);
+            rr = span_r(dx, dy, 130, 52);
+            if (rr >= 0 && (rel <= 2 || rel >= 14))
+                scope_blip(79, IDX_HOSTILE, rel, SCOPE_X, SONAR_Y, rr);
+            else
+                scope_hide(79);
+        } else scope_hide(79);
+    } else {
+        unsigned char who = game_ping_who();
+        scope_hide(80);
+        scope_hide(81);
+        if (who < N_ESCORT) {
+            dx = (int)(((long)ships[who].x - ships[focus].x) / FP);
+            dy = (int)(((long)ships[who].y - ships[focus].y) / FP);
+            rel = (unsigned char)((bearing16(dx, dy) - own) & 15);
+            scope_blip(79, IDX_HOSTILE, rel, SCOPE_X, SONAR_Y, 48);
+        } else scope_hide(79);
+    }
+    if (game_hear_xy(&dx, &dy)) {
+        rel = (unsigned char)((bearing16(dx, dy) - own) & 15);
+        scope_ray(82, rel, SCOPE_X, HYDRO_Y, 20);
+        scope_ray(83, rel, SCOPE_X, HYDRO_Y, 48);
+    } else {
+        scope_hide(82);
+        scope_hide(83);
+    }
 }
 
 static void hud_play(void)
 {
-    unsigned char i;
-    unsigned int deg = (unsigned int)((unsigned long)ships[selected].hdg * 360ul / 256ul);
-    unsigned int heard;
-    textcolor(COLOR_WHITE);
-    gotoxy(0, 0);
-    for (i = 0; i < N_ESCORT; i++) {
-        if (i == selected) cputc('*');
-        else cputc(' ');
-        cputc((char)('1' + i));
-        cputc(game_alive(i) ? ord_ch[game_order_of(i)] : 'x');
+    unsigned char focus;
+    unsigned int deg, heard;
+    hub_instructions();
+    focus = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
+    deg = (unsigned int)((ships[focus].hdg * 45u) >> 5);
+    hub_set(0, desync ? "DESYNC" : (net ? "LINK" : "SOLO"));
+    hub_set(1, game_player() == ROLE_UBOAT ? "U-BOAT" : "ESCORT");
+    if (view == VIEW_BRIDGE) hub_set(2, "BRIDGE");
+    else if (view == VIEW_GLASS) hub_set(2, game_player() == ROLE_UBOAT ? "PERISCOPE" : "BINOCULARS");
+    else if (view == VIEW_ROOM) hub_set(2, "CONTROL");
+    else if (zoom == 1) hub_set(2, "MAP 32");
+    else if (zoom == 2) hub_set(2, "MAP 16");
+    else if (zoom == 3) hub_set(2, "MAP 8");
+    else hub_set(2, "MAP");
+    if (game_player() == ROLE_ESCORT) {
+        unsigned char i;
+        char line[20];
+        unsigned char n = 0;
+        for (i = 0; i < N_ESCORT; i++) {
+            line[n++] = (char)(i == selected ? '*' : ' ');
+            line[n++] = (char)('1' + i);
+            line[n++] = (char)(game_alive(i) ? ord_ch[game_order_of(i)] : 'x');
+        }
+        line[n] = 0;
+        hub_set(3, line);
+    } else {
+        hub_set(3, boat_name(uboat_type));
     }
-    cprintf("  %s %3u  %s", tel_name[ships[selected].tel], deg, boat_name(uboat_type));
-    cclear(6);
-    gotoxy(0, 1);
-    if (game_hear(&heard)) cprintf("HEAR %3u  ", heard);
-    else cputs("QUIET     ");
-    cprintf("TUBES %u  HITS %u  TON %u/%u",
-            (unsigned)game_tubes(), (unsigned)game_hits(),
-            (unsigned)game_tonnage(), (unsigned)TONNAGE_WIN);
-    if (desync) cputs("  DESYNC");
-    cclear(4);
-    gotoxy(0, 2);
-    if (game_player() == ROLE_ESCORT)
-        cputs("[] CYCLE  P PATROL  H HUNT  A ATTACK  S PING  D CHARGES  ARROWS");
-    else
-        cputs("U-BOAT   J L HELM   I K TELEGRAPH   F FIRE");
-    cclear(4);
+    hub_set(4, tel_name[ships[focus].tel]);
+    {
+        char line[20];
+        unsigned char d = game_depth();
+        line[0] = (char)('0' + (deg / 100) % 10);
+        line[1] = (char)('0' + (deg / 10) % 10);
+        line[2] = (char)('0' + deg % 10);
+        line[3] = ' ';
+        line[4] = 'T';
+        line[5] = (char)('0' + game_tubes());
+        line[6] = ' ';
+        line[7] = 'H';
+        line[8] = (char)('0' + game_hits());
+        line[9] = ' ';
+        line[10] = (char)('0' + game_tonnage());
+        line[11] = '/';
+        line[12] = '4';
+        if (game_player() == ROLE_UBOAT) {
+            line[13] = ' ';
+            line[14] = 'D';
+            line[15] = (char)('0' + (d / 10) % 10);
+            line[16] = (char)('0' + d % 10);
+            line[17] = 0;
+        } else if (game_watch(&heard)) {
+            line[13] = ' ';
+            line[14] = 'W';
+            line[15] = 0;
+        } else line[13] = 0;
+        hub_set(5, line);
+    }
+    {
+        char b[12];
+        unsigned int lk;
+        if (view == VIEW_GLASS) {
+            lk = (unsigned int)(((unsigned char)(ships[focus].hdg + look_ofs) * 45u) >> 5);
+            b[0] = 'H';
+            b[1] = (char)('0' + (deg / 100) % 10);
+            b[2] = (char)('0' + (deg / 10) % 10);
+            b[3] = (char)('0' + deg % 10);
+            b[4] = ' ';
+            b[5] = 'L';
+            b[6] = (char)('0' + (lk / 100) % 10);
+            b[7] = (char)('0' + (lk / 10) % 10);
+            b[8] = (char)('0' + lk % 10);
+            b[9] = 0;
+        } else {
+            b[0] = 0;
+        }
+        hub_set(6, b);
+    }
+    if (!gfx_ok) hub_set(0, "NO ART");
+    bgcolor(COLOR_BLACK);
 }
 
 static void begin_match(unsigned char as, unsigned char linked)
 {
-    unsigned char y;
     role = as;
     net = linked;
     ready = (unsigned char)!linked;
@@ -162,55 +997,86 @@ static void begin_match(unsigned char as, unsigned char linked)
     step = 0;
     game_init(pick);
     game_set_player(as);
-    for (y = 8; y < 28; y++) line_clear(y);
+    cache_clear();
+    hub_forget();
+    clear_screen();
     stage = ST_PLAY;
 }
 
 static void title_screen(void)
 {
-    textcolor(COLOR_WHITE);
-    cputsxy(28, 12, "CONVOY");
-    cputsxy(16, 15, "1  ESCORT AGAINST THE BOAT");
-    cputsxy(16, 16, "2  U-BOAT AGAINST THE ESCORT");
-    cputsxy(16, 17, "3  LINK THE OTHER MACHINE");
-    gotoxy(16, 19);
-    cprintf("BOAT %s   T CHANGES IT", boat_name(pick));
-    cclear(8);
-    cputsxy(16, 21, "P PATROL   H HUNT   A ATTACK");
+    hub_instructions();
+    hub_set(0, "CONVOY");
+    hub_set(1, "1 ESCORT");
+    hub_set(2, "2 U-BOAT");
+    hub_set(3, "3 LINK");
+    hub_set(4, "T CYCLES THE BOAT");
+    hub_set(5, boat_name(pick));
+    hub_set(6, "O MAP B BRIDGE");
+    hub_set(7, "G GLASS C ROOM");
 }
 
 static void host_screen(void)
 {
-    textcolor(COLOR_WHITE);
-    cputsxy(12, 14, "E  THIS SIDE IS THE ESCORT");
-    cputsxy(12, 15, "U  THIS SIDE IS THE U-BOAT");
-    gotoxy(12, 17);
-    cprintf("ADDRESS %s", host);
-    cclear(10);
-    cputsxy(12, 19, "TYPE THE ADDRESS   ENTER DIALS   ESC BACK");
-    cputsxy(12, 21, "ON THAT PC:  PYTHON TOOLS\\RELAY.PY");
-    gotoxy(12, 22);
-    cputs(role == ROLE_UBOAT ? "SIDE U-BOAT" : "SIDE ESCORT");
-    cclear(8);
+    hub_instructions();
+    hub_set(0, role == ROLE_UBOAT ? "SIDE U-BOAT" : "SIDE ESCORT");
+    hub_set(1, "E ESCORT SIDE");
+    hub_set(2, "U U-BOAT SIDE");
+    hub_set(3, "ADDRESS");
+    hub_set(4, host);
+    hub_set(5, "ENTER DIALS");
+    hub_set(6, "ESC BACK");
+    hub_set(7, "RELAY PORT 6416");
+}
+
+static void set_view(unsigned char next)
+{
+    if (view == next && next != VIEW_MAP) return;
+    view = next;
+    if (view != VIEW_MAP) zoom = 0;
+    cache_clear();
+    hide_sprites();
+    hub_forget();
+}
+
+static void apply_view_key(unsigned char k)
+{
+    if (k == 'o' || k == 'O') set_view(VIEW_MAP);
+    else if (k == 'b' || k == 'B') set_view(VIEW_BRIDGE);
+    else if (k == 'g' || k == 'G') set_view(VIEW_GLASS);
+    else if ((k == 'c' || k == 'C') && game_player() == ROLE_UBOAT) set_view(VIEW_ROOM);
+    else if (k == 'z' || k == 'Z') {
+        view = VIEW_MAP;
+        zoom = (unsigned char)((zoom + 1) & 3);
+        cache_clear();
+        hub_forget();
+    } else if (k == 'n' || k == 'N' || k == 'm' || k == 'M') {
+        if (stage == ST_PLAY && view != VIEW_GLASS)
+            look_ofs = 0;
+    }
 }
 
 static void apply_play_key(unsigned char k)
 {
+    apply_view_key(k);
     if (game_player() == ROLE_ESCORT) {
         if (k == '[' || k == ',') game_cycle(-1);
         else if (k == ']' || k == '.' || k == 9) game_cycle(1);
         else if (k >= '1' && k <= '4') game_select((unsigned char)(k - '1'));
-        else if (k == 'p' || k == 'P' || k == 'o' || k == 'O') game_order(ORD_PATROL);
+        else if (k == 'p' || k == 'P') game_order(ORD_PATROL);
         else if (k == 'h' || k == 'H') game_order(ORD_HUNT);
         else if (k == 'a' || k == 'A') game_order(ORD_ATTACK);
         else if (k == 's' || k == 'S') game_ping();
         else if (k == 'd' || k == 'D') game_drop();
+        else if (k == 'f' || k == 'F') game_gun();
         else if (k == CH_CURS_UP) game_telegraph_delta(1);
         else if (k == CH_CURS_DOWN) game_telegraph_delta(-1);
     } else {
         if (k == 'i' || k == 'I') game_uboat_telegraph_delta(1);
         else if (k == 'k' || k == 'K') game_uboat_telegraph_delta(-1);
         else if (k == 'f' || k == 'F' || k == ' ') game_fire();
+        else if (k == 'y' || k == 'Y') game_planes(-1);
+        else if (k == 'u' || k == 'U') game_planes(1);
     }
 }
 
@@ -253,9 +1119,9 @@ static void play_tick(unsigned char helm, unsigned char uhelm)
         }
         if (!ready || !saw) {
             hud_play();
-            gotoxy(0, 3);
-            cputs(ready ? "WAITING FOR ORDERS" : "WAITING FOR THE OTHER SIDE");
-            cclear(6);
+            hub_row(28);
+            cputs(ready ? "WAITING ORDERS" : "WAITING SIDE");
+            bgcolor(COLOR_BLACK);
             return;
         }
         if (role == ROLE_ESCORT) {
@@ -271,6 +1137,7 @@ static void play_tick(unsigned char helm, unsigned char uhelm)
     game_tick();
     if (snd_ping) { sfx_play(SFX_PING); snd_ping = 0; }
     if (snd_boom) { sfx_play(SFX_BOOM); snd_boom = 0; }
+    if (snd_launch) { sfx_play(SFX_LAUNCH); snd_launch = 0; }
     sfx_tick();
     if (game_winner()) stage = ST_OVER;
 }
@@ -278,27 +1145,57 @@ static void play_tick(unsigned char helm, unsigned char uhelm)
 static void hud_over(void)
 {
     hud_play();
-    gotoxy(0, 3);
-    if (game_winner() == WIN_ESCORT) cputs("BOAT SUNK.  ESCORTS WIN.   ANY KEY");
-    else cputs("CONVOY BROKEN.  U-BOAT WINS.   ANY KEY");
-    cclear(4);
+    hub_set(4, game_winner() == WIN_ESCORT ? "BOAT SUNK" : "CONVOY BROKEN");
+    hub_set(5, "ANY KEY");
+    bgcolor(COLOR_BLACK);
 }
 
 void plat_init(void)
 {
     unsigned char i;
-    display_init_640x480(6);
+    videomode(VIDEOMODE_80x60);
+    clear_screen();
+    display_init_640x480(0);
     layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
     gfx_ok = (unsigned char)(load_vram("tiles.bin", VRAM_TILES)
-                          && load_vram("sprites.bin", VRAM_SPR)
-                          && load_vram("pal.bin", VERA_PALETTE_ADDR));
+                          && load_vram("pal.bin", VERA_PALETTE_ADDR)
+                          && load_vram("marks.bin", VRAM_MARKS));
+    {
+        unsigned int n;
+        if (file_load_to_banks("escort.bin", BANK_ESCORT, BANK_ESCORT + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("merchant.bin", BANK_MERCH, BANK_MERCH + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("tanker.bin", BANK_TANKER, BANK_TANKER + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("uboat.bin", BANK_UBOAT, BANK_UBOAT + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("wake.bin", BANK_WAKE, BANK_WAKE + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("mid.bin", BANK_MID, BANK_MID + 3, 32768u, &n) != FILE_OK ||
+            file_load_to_banks("midwake.bin", BANK_MIDWAKE, BANK_MIDWAKE, 8192u, &n) != FILE_OK ||
+            file_load_to_banks("tiny.bin", BANK_TINY, BANK_TINY, 8192u, &n) != FILE_OK ||
+            file_load_to_banks("tinywake.bin", BANK_TINYWAKE, BANK_TINYWAKE, 2048u, &n) != FILE_OK ||
+            file_load_to_banks("charge.bin", BANK_CHARGE, BANK_CHARGE, 4096u, &n) != FILE_OK ||
+            !load_vram("zoom.bin", VRAM_ZOOM) ||
+            !load_vram("numbers.bin", VRAM_NUM) ||
+            !load_vram("weapons.bin", VRAM_WEAP) ||
+            !load_vram("gauges.bin", VRAM_GAUGE) ||
+            !load_vram("scope.bin", VRAM_SCOPE) ||
+            !load_vram("cross.bin", VRAM_CROSS))
+            gfx_ok = 0;
+        {
+            static const char prof_nm[][12] = {
+                "profesc.bin", "profmer.bin", "proftnk.bin", "profubt.bin"
+            };
+            for (i = 0; i < 4; i++) {
+                X16_RAM_BANK = (unsigned char)(BANK_PROF + (unsigned char)(i << 2));
+                if (file_load(prof_nm[i], FILE_TO_RAM, 0xA000) != FILE_OK) gfx_ok = 0;
+            }
+        }
+    }
     fill_sea();
     layer_enable_in_dc(0, 1);
     layer_enable_in_dc(1, 1);
-    VERA.control = 0;
-    VERA_DC_VIDEO = (unsigned char)(VERA_DC_VIDEO | VERA_VIDEO_SPRITES);
-    for (i = 0; i < 28; i++)
-        write_sprite(i, IDX_SPR0, 0, 0, 0);
+    sprite_global_enable(1);
+    cache_clear();
+    for (i = 0; i < SPR_N; i++) spr_b7[i] = 0xFF;
+    hide_sprites();
     audio_init();
     sfx_off();
     link_reset();
@@ -313,12 +1210,12 @@ void plat_init(void)
         host[hlen] = 0;
     }
     game_init(pick);
-    cursor(0);
+    clear_screen();
 }
 
 void plat_frame(void)
 {
-    unsigned char helm = HELM_MID, uhelm = HELM_MID;
+    static unsigned char helm = HELM_MID, uhelm = HELM_MID;
     unsigned char k;
     waitvsync();
     while (kbhit()) {
@@ -326,13 +1223,13 @@ void plat_frame(void)
         if (stage == ST_TITLE) {
             if (k == '1') begin_match(ROLE_ESCORT, 0);
             else if (k == '2') begin_match(ROLE_UBOAT, 0);
-            else if (k == '3') { stage = ST_HOST; line_clear(12); line_clear(15); line_clear(16); line_clear(17); line_clear(19); line_clear(21); }
+            else if (k == '3') { stage = ST_HOST; clear_screen(); }
             else if (k == 't' || k == 'T') {
                 pick = (unsigned char)((pick + 1) % BOAT_N);
                 game_set_uboat(pick);
-            }
+            } else apply_view_key(k);
         } else if (stage == ST_HOST) {
-            if (k == 27 || k == 3) { stage = ST_TITLE; }
+            if (k == 27 || k == 3) { stage = ST_TITLE; clear_screen(); }
             else if (k == 'e' || k == 'E') role = ROLE_ESCORT;
             else if (k == 'u' || k == 'U') role = ROLE_UBOAT;
             else if (k == '\r' || k == '\n') {
@@ -345,42 +1242,62 @@ void plat_frame(void)
                 host[hlen] = 0;
             }
         } else if (stage == ST_PLAY) {
-            if (game_player() == ROLE_ESCORT) {
+            if (view == VIEW_GLASS) {
+                /* The glasses only slew the look. The ship's heading stays put. */
+                if (k == 'n' || k == 'N' || k == CH_CURS_LEFT || k == 'j' || k == 'J')
+                    look_ofs = (unsigned char)(look_ofs - 16);
+                else if (k == 'm' || k == 'M' || k == CH_CURS_RIGHT || k == 'l' || k == 'L')
+                    look_ofs = (unsigned char)(look_ofs + 16);
+            } else if (game_player() == ROLE_ESCORT) {
                 if (k == CH_CURS_LEFT) helm = HELM_PORT;
                 else if (k == CH_CURS_RIGHT) helm = HELM_STBD;
+                if (view == VIEW_BRIDGE && (k == 'n' || k == 'N')) helm = HELM_PORT;
+                if (view == VIEW_BRIDGE && (k == 'm' || k == 'M')) helm = HELM_STBD;
             } else {
                 if (k == 'j' || k == 'J') uhelm = HELM_PORT;
                 else if (k == 'l' || k == 'L') uhelm = HELM_STBD;
+                if (view == VIEW_ROOM || view == VIEW_BRIDGE) {
+                    if (k == CH_CURS_LEFT || k == 'n' || k == 'N') uhelm = HELM_PORT;
+                    else if (k == CH_CURS_RIGHT || k == 'm' || k == 'M') uhelm = HELM_STBD;
+                }
             }
             apply_play_key(k);
         } else if (stage == ST_OVER) {
             stage = ST_TITLE;
             link_reset();
             game_init(pick);
+            hub_forget();
+            clear_screen();
         }
     }
 
     if (stage == ST_TITLE) {
         draw_world();
         title_screen();
+        draw_scopes();
         return;
     }
     if (stage == ST_HOST) {
         draw_world();
         host_screen();
+        draw_scopes();
         return;
     }
     if (stage == ST_DIAL) {
         unsigned char side, data[4];
         link_pump(&side, data);
         draw_world();
-        gotoxy(20, 16);
+        hub_row(16);
         cputs(link_status());
-        cclear(10);
+        bgcolor(COLOR_BLACK);
+        draw_scopes();
         if (link_state() == LINK_UP) begin_match(role, 1);
         else if (link_state() == LINK_FAIL) {
-            gotoxy(16, 18);
-            cputs("NO CARRIER   ANY KEY");
+            hub_row(18);
+            cputs("NO CARRIER");
+            hub_row(19);
+            cputs("ANY KEY");
+            bgcolor(COLOR_BLACK);
             if (kbhit()) { cgetc(); stage = ST_HOST; }
         }
         return;
@@ -388,12 +1305,17 @@ void plat_frame(void)
 
     step++;
     draw_world();
-    layer_scroll(0, (unsigned int)scroll_x, (unsigned int)scroll_y);
-    if (stage == ST_OVER) { hud_over(); return; }
-    /* Same cadence solo and linked, so a stopped boat takes a few seconds
-     * to drift into view instead of arriving on the first ping of the clock. */
-    if ((step % 8) == 0) play_tick(helm, uhelm);
+    if (stage == ST_OVER) { hud_over(); draw_scopes(); return; }
+    /* Original helm rate: one tick every three blanks. Ship speed stays at
+     * half the first demo, so a faster tick does not restore the old knots. */
+    if ((step % 3) == 0) {
+        play_tick(helm, uhelm);
+        helm = HELM_MID;
+        uhelm = HELM_MID;
+    }
+    if (stage == ST_OVER) hud_over();
     else hud_play();
+    draw_scopes();
     {
         unsigned int f = drone_f[ships[selected].tel];
         if (!f || game_player() != ROLE_ESCORT) psg_stop_voice(0);
@@ -413,8 +1335,9 @@ void plat_smoke(void)
     int y0 = ships[0].y;
     int my = ships[4].y;
     int uy = ships[N_SHIP - 1].y;
-    unsigned char i;
-    unsigned char moved, hold, drift;
+    unsigned char i, n;
+    unsigned char moved, hold, drift, fired, attack;
+    int sea;
     game_telegraph_delta(2);
     for (i = 0; i < 40; i++) {
         game_helm(HELM_MID);
@@ -423,6 +1346,32 @@ void plat_smoke(void)
     moved = (unsigned char)(ships[0].y < y0);
     hold = (unsigned char)(ships[4].y == my);
     drift = (unsigned char)(ships[N_SHIP - 1].y > uy);
+    sea = scroll_y;
+
+    /* Same opponents the title uses, so a scripted run has to see a fish
+     * leave the tubes and an escort go to attack. */
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[4].x + 20 * FP;
+    ships[N_SHIP - 1].y = ships[4].y + 80 * FP;
+    game_set_player(ROLE_ESCORT);
+    for (i = 0; i < 160; i++) {
+        game_ai_uboat();
+        game_tick();
+    }
+    fired = (unsigned char)(game_tubes() < 4);
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y - 70 * FP;
+    game_set_player(ROLE_UBOAT);
+    attack = 0;
+    for (i = 0; i < 80; i++) {
+        game_ai_escort();
+        game_tick();
+        for (n = 0; n < N_ESCORT; n++)
+            if (game_order_of(n) == ORD_ATTACK) attack = 1;
+    }
+
     smoke_puts("convoy smoke load=");
     cbm_k_chrout((unsigned char)('0' + (gfx_ok ? 1 : 0)));
     smoke_puts(" moved=");
@@ -431,8 +1380,12 @@ void plat_smoke(void)
     cbm_k_chrout((unsigned char)('0' + hold));
     smoke_puts(" drift=");
     cbm_k_chrout((unsigned char)('0' + drift));
+    smoke_puts(" fired=");
+    cbm_k_chrout((unsigned char)('0' + fired));
+    smoke_puts(" attack=");
+    cbm_k_chrout((unsigned char)('0' + attack));
     cbm_k_chrout(13);
-    if (gfx_ok && moved && hold && drift && scroll_y == -80)
+    if (gfx_ok && moved && hold && drift && sea == -40 && fired && attack)
         smoke_puts("convoy smoke ok\r");
     else
         smoke_puts("convoy smoke fail\r");

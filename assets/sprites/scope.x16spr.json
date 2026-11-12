@@ -1,0 +1,383 @@
+{
+  "format": "x16.sprites",
+  "schema": 1,
+  "project": "../../x16project.json",
+  "resource": "scope",
+  "palette": "main",
+  "protocolVersion": 1,
+  "sessionId": "convoy-scope",
+  "host": {
+    "id": "standalone",
+    "displayName": "Standalone",
+    "instanceId": "convoy",
+    "projectPath": "D:\\Vintage\\src\\convoy-x16",
+    "projectName": "convoy-x16"
+  },
+  "sprites": {
+    "version": 1,
+    "palette": [
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "name": "black"
+      },
+      {
+        "r": 15,
+        "g": 15,
+        "b": 15,
+        "name": "white"
+      },
+      {
+        "r": 1,
+        "g": 2,
+        "b": 3,
+        "name": "outline"
+      },
+      {
+        "r": 10,
+        "g": 11,
+        "b": 12,
+        "name": "escort"
+      },
+      {
+        "r": 8,
+        "g": 6,
+        "b": 3,
+        "name": "merchant"
+      },
+      {
+        "r": 12,
+        "g": 3,
+        "b": 2,
+        "name": "tanker"
+      },
+      {
+        "r": 5,
+        "g": 9,
+        "b": 13,
+        "name": "sea-deep"
+      },
+      {
+        "r": 7,
+        "g": 12,
+        "b": 15,
+        "name": "sea"
+      },
+      {
+        "r": 9,
+        "g": 14,
+        "b": 15,
+        "name": "sea-light"
+      },
+      {
+        "r": 4,
+        "g": 6,
+        "b": 5,
+        "name": "uboat"
+      },
+      {
+        "r": 15,
+        "g": 14,
+        "b": 4,
+        "name": "yellow"
+      },
+      {
+        "r": 8,
+        "g": 12,
+        "b": 15,
+        "name": "foam"
+      },
+      {
+        "r": 15,
+        "g": 2,
+        "b": 1,
+        "name": "red"
+      },
+      {
+        "r": 6,
+        "g": 8,
+        "b": 10,
+        "name": "xxi"
+      },
+      {
+        "r": 5,
+        "g": 5,
+        "b": 4,
+        "name": "deck"
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 2,
+        "name": "shadow"
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "name": "sel-black"
+      },
+      {
+        "r": 15,
+        "g": 15,
+        "b": 15,
+        "name": "sel-white"
+      },
+      {
+        "r": 1,
+        "g": 2,
+        "b": 3,
+        "name": "sel-outline"
+      },
+      {
+        "r": 15,
+        "g": 12,
+        "b": 2,
+        "name": "sel-escort"
+      },
+      {
+        "r": 8,
+        "g": 6,
+        "b": 3,
+        "name": "sel-merchant"
+      },
+      {
+        "r": 12,
+        "g": 3,
+        "b": 2,
+        "name": "sel-tanker"
+      },
+      {
+        "r": 5,
+        "g": 9,
+        "b": 13,
+        "name": "sel-sea-deep"
+      },
+      {
+        "r": 7,
+        "g": 12,
+        "b": 15,
+        "name": "sel-sea"
+      },
+      {
+        "r": 9,
+        "g": 14,
+        "b": 15,
+        "name": "sel-sea-light"
+      },
+      {
+        "r": 4,
+        "g": 6,
+        "b": 5,
+        "name": "sel-uboat"
+      },
+      {
+        "r": 15,
+        "g": 14,
+        "b": 4,
+        "name": "sel-yellow"
+      },
+      {
+        "r": 8,
+        "g": 12,
+        "b": 15,
+        "name": "sel-foam"
+      },
+      {
+        "r": 15,
+        "g": 2,
+        "b": 1,
+        "name": "sel-red"
+      },
+      {
+        "r": 6,
+        "g": 8,
+        "b": 10,
+        "name": "sel-xxi"
+      },
+      {
+        "r": 5,
+        "g": 5,
+        "b": 4,
+        "name": "sel-deck"
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 2,
+        "name": "sel-shadow"
+      }
+    ],
+    "sheets": [
+      {
+        "id": "beam",
+        "name": "Radar sweep",
+        "size": 16,
+        "width": 16,
+        "height": 16,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 16,
+        "pixelHeight": 16,
+        "frames": [
+          {
+            "name": "beam-0",
+            "pixels": "0000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-1",
+            "pixels": "0000000000000000000000000cc10000000000000c100000000000000c10000000000000c100000000000000c10000000000000c100000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-2",
+            "pixels": "00000000000000000000000000000000000000000000c10000000000000c10000000000000c10000000000000c10000000000000c10000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-3",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000c1000000000000ccc10000000000cc100000000000cc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-4",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cccccccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-5",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000cc1000000000000000cc1000000000000000ccc100000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-6",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c1000000000000000c1000000000000000c1000000000000000c1000000000000000c1000000000000000c100000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-7",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c100000000000000c1000000000000000c100000000000000c1000000000000000c100000000000000c100000000000000cc1000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-8",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000c100000000000000000000000"
+          },
+          {
+            "name": "beam-9",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c100000000000000c10000000000000c100000000000000c10000000000000c100000000000000c10000000000000c1100000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-10",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c10000000000000c10000000000000c10000000000000c10000000000000c10000000000000c1000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-11",
+            "pixels": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c1100000000000c110000000000c111000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-12",
+            "pixels": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c11111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-13",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000c100000000000000c111000000000000000c11000000000000000c11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-14",
+            "pixels": "0000000000000000000000000000000000c1000000000000000c1000000000000000c1000000000000000c1000000000000000c1000000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "name": "beam-15",
+            "pixels": "00000000000000000000c1100000000000000c100000000000000c1000000000000000c100000000000000c1000000000000000c100000000000000c1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "face",
+        "name": "Scope quadrant",
+        "size": 64,
+        "width": 64,
+        "height": 64,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 64,
+        "pixelHeight": 64,
+        "frames": [
+          {
+            "name": "face-0",
+            "pixels": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000022222222222000000000000000000000000000000000000000000000000022222222222222100000000000000000000000000000000000000000000022222221222222222220000000000000000000000000000000000000000002222222222222222222222000000000000000000000000000000000000000022222222222222222eeeeeee000000000000000000000000000000000000002221222222222eeeeeeeeeeeee00000000000000000000000000000000000022222222222eeeeeeeeeeeeeeeee000000000000000000000000000000000022222222222eeeeeeeeeeeeeeeeeee000000000000000000000000000000002222222222eeeeeeeeeeeeeeeeeeeeee0000000000000000000000000000000222222222eeeeeeeeeeeeeeeeeeeeeeee00000000000000000000000000000222222222eeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000000022212222eeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000000000002222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000000022222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000000002222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000000002222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000000000000000002222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000002222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000000000000000221222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee00000000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeefffffff0000000000000000022222eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeefffffffffff0000000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeeeefffffffffeeeee000000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeeeffffffeeeeeeeeee00000000000000222222eeeeeeeeeeeeeeeeeeeeeeeeeefffffeeeeeeeeeeeee0000000000000022222eeeeeeeeeeeeeeeeeeeeeeeeefffffeeeeeeeeeeeeeee000000000000022122eeeeeeeeeeeeeeeeeeeeeeeefffffeeeeeeeeeeeeeeeee000000000000222222eeeeeeeeeeeeeeeeeeeeeeeffffeeeeeeeeeeeeeeeeeee00000000000022222eeeeeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeee0000000000022222eeeeeeeeeeeeeeeeeeeeeeffffeeeeeeeeeeeeeeeeeeeeee0000000000022222eeeeeeeeeeeeeeeeeeeeeffffeeeeeeeeeeeeeeeeeeeeeee000000000022222eeeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeee000000000022222eeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeeee00000000022222eeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeeeee00000000022222eeeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000022222eeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeeeeee0000000021222eeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000022222eeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000022222eeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeeeeeeeeeefffff000000022222eeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeeeeeffffffff00000022222eeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeeeeeeffffffeeee00000022222eeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeeefffffeeeeeee0000002222eeeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeeeeffffeeeeeeeee0000002222eeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeeefffeeeeeeeeeee0000022222eeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeeefffeeeeeeeeeeee0000022222eeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeee000002222eeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeee000002122eeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeee000022222eeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeee000022222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeee000022222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeee000022222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeefffeeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeee00002222eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeee00002122eeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeffeeeeeeeeeeeeeeeeeee"
+          }
+        ]
+      },
+      {
+        "id": "blip",
+        "name": "Friendly blip",
+        "size": 16,
+        "width": 16,
+        "height": 16,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 16,
+        "pixelHeight": 16,
+        "frames": [
+          {
+            "name": "blip-0",
+            "pixels": "0000000000000000000000000000000000000000000000000000000000000000000000111100000000000111111000000000111111110000000011111111000000001111111100000000111111110000000001111110000000000011110000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "blip-red",
+        "name": "Unknown blip",
+        "size": 16,
+        "width": 16,
+        "height": 16,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 16,
+        "pixelHeight": 16,
+        "frames": [
+          {
+            "name": "blip-red-0",
+            "pixels": "0000000000000000000000000000000000000000000000000000000000000000000000cccc00000000000cccccc000000000cccccccc00000000cccccccc00000000cccccccc00000000cccccccc000000000cccccc00000000000cccc0000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "foam",
+        "name": "Wake foam",
+        "size": 16,
+        "width": 16,
+        "height": 16,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 16,
+        "pixelHeight": 16,
+        "frames": [
+          {
+            "name": "foam-0",
+            "pixels": "0000000000000000000000000000000000000011110000000000111111110000000111111111100000011111111110000011111ff1111100001111ffff111100001111ffff1111000011111ff1111100000111111111100000011111111110000000111111110000000000111100000000000000000000000000000000000000"
+          }
+        ]
+      },
+      {
+        "id": "ring",
+        "name": "Wake ring",
+        "size": 32,
+        "width": 32,
+        "height": 32,
+        "compose": "single",
+        "paletteOffset": 0,
+        "layoutLocked": false,
+        "pixelWidth": 32,
+        "pixelHeight": 32,
+        "frames": [
+          {
+            "name": "ring-0",
+            "pixels": "0000000000000000000000000000000000000000000000000000000000000000000000000001111111111000000000000000000001111111111111100000000000000001111ffffffffff11110000000000000111ffffffffffffff11100000000000111ffffffffffffffff111000000000111fffff00000000fffff1110000000011ffff000000000000ffff11000000011ffff00000000000000ffff1100000011fff0000000000000000fff110000011ffff0000000000000000ffff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011fff000000000000000000fff11000011ffff0000000000000000ffff110000011fff0000000000000000fff1100000011ffff00000000000000ffff11000000011ffff000000000000ffff1100000000111fffff00000000fffff111000000000111ffffffffffffffff11100000000000111ffffffffffffff11100000000000001111ffffffffff1111000000000000000011111111111111000000000000000000001111111111000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      }
+    ]
+  }
+}

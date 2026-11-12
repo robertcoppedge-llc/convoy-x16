@@ -55,7 +55,7 @@
     "cpu": "6502"
   },
   "budgets": {
-    "prgMax": 24576,
+    "prgMax": 36864,
     "forbid": ["sprite_pool.o", "sprites.o"]
   },
   "notes": "640x480 4bpp convoy plot. Sea tiles are assets/tiles/sea.x16tile.json (pixel-cli export-tiles -> boot/TILES.BIN at VRAM $00000). Overhead ship sprites are assets/sprites/plot.x16spr.json (pixel-cli export -> boot/SPRITES.BIN at $04000) with palette assets/palettes/main.x16pal.json (boot/PAL.BIN at $1FA00). The 64x64 tile map is filled by the program at $00400. Layer 1 stays the KERNAL text HUD. PSG voice 0 is the telegraph drone; assets/sounds/sfx.x16snd.json (sound-cli export) is the bell and helm tick on voices 2 and 3. The plan is docs/game-plan.md. This first slice is one machine: both stations on one keyboard. The -netcard link is the next slice.",
@@ -66,7 +66,7 @@
         "type": "palette",
         "doc": "assets/palettes/main.x16pal.json",
         "tool": "pixel",
-        "outputs": [{ "file": "boot/PAL.BIN", "bytes": 32 }],
+        "outputs": [{ "file": "boot/PAL.BIN", "bytes": 64 }],
         "placement": { "target": "vram", "addr": "0x1FA00", "loader": "file_load (FILE_TO_VRAM)" }
       }
     ],
@@ -77,7 +77,7 @@
         "doc": "assets/tiles/sea.x16tile.json",
         "tool": "pixel",
         "exporter": "pixel-cli export-tiles",
-        "outputs": [{ "file": "boot/TILES.BIN", "bytes": 512 }],
+        "outputs": [{ "file": "boot/TILES.BIN", "bytes": 768 }],
         "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load (FILE_TO_VRAM)" }
       }
     ],
@@ -89,7 +89,126 @@
         "tool": "pixel",
         "exporter": "pixel-cli export",
         "outputs": [{ "file": "boot/SPRITES.BIN", "bytes": 1280 }],
-        "placement": { "target": "vram", "addr": "0x04000", "loader": "file_load (FILE_TO_VRAM)" }
+        "placement": { "target": "vram", "addr": "0x04000", "loader": "kept for the Pixel sheet of the small plot icons" }
+      },
+      {
+        "id": "hulls",
+        "type": "sprites",
+        "doc": "assets/sprites/hulls.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [
+          { "file": "boot/escort.bin", "bytes": 32768 },
+          { "file": "boot/merchant.bin", "bytes": 32768 },
+          { "file": "boot/tanker.bin", "bytes": 32768 },
+          { "file": "boot/uboat.bin", "bytes": 32768 },
+          { "file": "boot/wake.bin", "bytes": 32768 }
+        ],
+        "placement": { "target": "bank", "addr": "1", "loader": "file_load_to_banks, one file per sheet" }
+      },
+      {
+        "id": "profiles",
+        "type": "sprites",
+        "doc": "assets/sprites/profiles.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [
+          { "file": "boot/profesc.bin", "bytes": 32768 },
+          { "file": "boot/profmer.bin", "bytes": 32768 },
+          { "file": "boot/proftnk.bin", "bytes": 32768 },
+          { "file": "boot/profubt.bin", "bytes": 32768 }
+        ],
+        "placement": { "target": "bank", "addr": "29", "loader": "file_load across banks 29-44, one 64px aspect blitted into a hull slot" }
+      },
+      {
+        "id": "zoom",
+        "type": "sprites",
+        "doc": "assets/sprites/zoom.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/zoom.bin", "bytes": 2560 }],
+        "placement": { "target": "vram", "addr": "0x04200", "loader": "file_load (FILE_TO_VRAM)" }
+      },
+      {
+        "id": "marks",
+        "type": "sprites",
+        "doc": "assets/sprites/marks.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [
+          { "file": "boot/marks.bin", "bytes": 256 },
+          { "file": "boot/cross.bin", "bytes": 2048 }
+        ],
+        "placement": { "target": "vram", "addr": "0x04000", "loader": "marks at $04000, crosshair at $03800" }
+      },
+      {
+        "id": "scope",
+        "type": "sprites",
+        "doc": "assets/sprites/scope.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/scope.bin", "bytes": 4992 }],
+        "placement": { "target": "vram", "addr": "0x02400", "loader": "file_load (FILE_TO_VRAM)" }
+      },
+      {
+        "id": "gauges",
+        "type": "sprites",
+        "doc": "assets/sprites/gauges.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/gauges.bin", "bytes": 6656 }],
+        "placement": { "target": "vram", "addr": "0x19400", "loader": "file_load (FILE_TO_VRAM)" }
+      },
+      {
+        "id": "weapons",
+        "type": "sprites",
+        "doc": "assets/sprites/weapons.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/weapons.bin", "bytes": 4608 }],
+        "placement": { "target": "vram", "addr": "0x18000", "loader": "file_load (FILE_TO_VRAM)" }
+      },
+      {
+        "id": "mid",
+        "type": "sprites",
+        "doc": "assets/sprites/mid.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [
+          { "file": "boot/mid.bin", "bytes": 32768 },
+          { "file": "boot/midwake.bin", "bytes": 8192 }
+        ],
+        "placement": { "target": "bank", "addr": "21", "loader": "file_load_to_banks" }
+      },
+      {
+        "id": "tiny",
+        "type": "sprites",
+        "doc": "assets/sprites/tiny.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [
+          { "file": "boot/tiny.bin", "bytes": 8192 },
+          { "file": "boot/tinywake.bin", "bytes": 2048 }
+        ],
+        "placement": { "target": "bank", "addr": "26", "loader": "file_load_to_banks" }
+      },
+      {
+        "id": "charge",
+        "type": "sprites",
+        "doc": "assets/sprites/charge.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/charge.bin", "bytes": 4096 }],
+        "placement": { "target": "bank", "addr": "28", "loader": "file_load_to_banks" }
+      },
+      {
+        "id": "numbers",
+        "type": "sprites",
+        "doc": "assets/sprites/numbers.x16spr.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export",
+        "outputs": [{ "file": "boot/numbers.bin", "bytes": 640 }],
+        "placement": { "target": "vram", "addr": "0x04C00", "loader": "file_load (FILE_TO_VRAM)" }
       }
     ],
     "sounds": [

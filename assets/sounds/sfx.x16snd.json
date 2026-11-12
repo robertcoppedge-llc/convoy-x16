@@ -53,6 +53,42 @@
           "len": 10,
           "pri": 2,
           "ch": 2
+        },
+        {
+          "f": 900,
+          "df": -40,
+          "vol": 28,
+          "dv": 2,
+          "wave": "triangle",
+          "len": 16,
+          "pri": 1,
+          "ch": 1
+        }
+      ]
+    },
+    {
+      "name": "launch",
+      "parts": [
+        {
+          "f": 140,
+          "df": 40,
+          "vol": 50,
+          "dv": 5,
+          "wave": "pulse",
+          "pulseWidth": 20,
+          "len": 8,
+          "pri": 2,
+          "ch": 1
+        },
+        {
+          "f": 70,
+          "df": -4,
+          "vol": 40,
+          "dv": 2,
+          "wave": "triangle",
+          "len": 14,
+          "pri": 1,
+          "ch": 0
         }
       ]
     },

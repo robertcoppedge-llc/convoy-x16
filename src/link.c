@@ -5,11 +5,8 @@
  */
 #include <cx16.h>
 #include <cbm.h>
+#include <x16lib/netcard.h>
 #include "link.h"
-
-#define UR(r) (*(volatile unsigned char *)(0x9FE8u + (unsigned char)(r)))
-#define LSR_DR   0x01
-#define LSR_THRE 0x20
 
 static unsigned char state;
 static unsigned char role;
@@ -34,33 +31,20 @@ static void set_status(const char *s)
     status[i] = 0;
 }
 
-static void uart_init(void)
-{
-    UR(3) = 0x80;
-    UR(0) = 8;
-    UR(1) = 0;
-    UR(3) = 0x03;
-    UR(2) = 0x07;
-    UR(4) = 0x03;
-    UR(1) = 0x00;
-}
-
 static void uart_putc(unsigned char c)
 {
-    unsigned int n = 0;
-    while (!(UR(5) & LSR_THRE) && n < 4000) n++;
-    UR(0) = c;
+    netcard_putc(c);
 }
 
 static void uart_puts(const char *s)
 {
-    while (*s) uart_putc((unsigned char)*s++);
+    netcard_puts(s);
 }
 
 static int uart_getc(void)
 {
-    if (!(UR(5) & LSR_DR)) return -1;
-    return UR(0);
+    if (!netcard_rx_ready()) return -1;
+    return netcard_getc();
 }
 
 static char hex_digit(unsigned char v)
@@ -70,9 +54,10 @@ static char hex_digit(unsigned char v)
 
 static int hex_val(unsigned char c)
 {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    /* The wire is ASCII. cc65 stores 'A' as PETSCII, so compare the ASCII bytes. */
+    if (c >= 0x30 && c <= 0x39) return c - 0x30;
+    if (c >= 0x41 && c <= 0x46) return c - 0x41 + 10;
+    if (c >= 0x61 && c <= 0x66) return c - 0x61 + 10;
     return -1;
 }
 
@@ -96,9 +81,10 @@ void link_begin(const char *host_in, unsigned char want)
     role = want;
     while (host_in[i] && i < 22) { host[i] = host_in[i]; i++; }
     host[i] = 0;
-    uart_init();
+    netcard_open();
     waitvsync();
-    uart_puts("ATE0\r");
+    uart_puts("ATE0");
+    uart_putc(0x0D);
     state = LINK_BUSY;
     phase = 1;
     timer = 0;
@@ -120,20 +106,21 @@ void link_send_packet(unsigned char side, const unsigned char *data)
 static void on_line(void)
 {
     if (phase == 1) {
-        if (line[0] == 'O' && line[1] == 'K') {
+        if (line[0] == 0x4F && line[1] == 0x4B) {
             uart_puts("ATD");
             uart_puts(host);
-            uart_puts(":" LINK_PORT "\r");
+            uart_puts(":" LINK_PORT);
+            uart_putc(0x0D);
             phase = 2;
             set_status("DIALING");
         }
     } else if (phase == 2) {
-        if (line[0] == 'C') {
+        if (line[0] == 0x43) {
             phase = 3;
             state = LINK_UP;
             hexn = 0;
             set_status(role == 'U' ? "LINK UP U" : "LINK UP E");
-        } else if (line[0] == 'N' || line[0] == 'E') {
+        } else if (line[0] == 0x4E || line[0] == 0x45) {
             state = LINK_FAIL;
             phase = 0;
             set_status("NO CARRIER");
@@ -152,16 +139,16 @@ static void on_up_byte(unsigned char c)
         return;
     }
     if (!hexn) {
-        if (c == 'H') { hexn = 20; return; }
-        if (c == 'E' || c == 'U') {
-            pkt_side = c;
+        if (c == 0x48) { hexn = 20; return; }
+        if (c == 0x45 || c == 0x55) {
+            pkt_side = (unsigned char)(c == 0x45 ? 'E' : 'U');
             hexn = 1;
             pkt_i = 0;
             hexv = 0;
         }
         return;
     }
-    if (c == '\n' || c == '\r') {
+    if (c == 0x0A || c == 0x0D) {
         if (pkt_i == 4) have = 1;
         hexn = 0;
         return;
@@ -208,8 +195,8 @@ unsigned char link_pump(unsigned char *side, unsigned char *data)
             on_up_byte((unsigned char)c);
             continue;
         }
-        if (c == '\r') continue;
-        if (c == '\n') { line[llen] = 0; on_line(); continue; }
+        if (c == 0x0D) continue;
+        if (c == 0x0A) { line[llen] = 0; on_line(); continue; }
         if (llen < 46) line[llen++] = (char)c;
     }
     if (!have) return 0;

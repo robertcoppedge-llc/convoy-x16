@@ -13,9 +13,9 @@ X16EMU ?= $(shell if [ -x "../../tools/x16emu/linux-x86_64-r49/x16emu" ]; then e
 BUILD ?= build
 TARGET = $(BUILD)/CONVOY.PRG
 X16LIB ?= ../../x16-lib-poc
-X16LIB_MODULES = display fileio/file_load vera/vera_addr vera/vera_addr16 layers/layer_config_tile layers/layer_enable_in_dc layers/layer_scroll audio/psg_core
+X16LIB_MODULES = display fileio/file_load fileio/file_banks vera/vera_addr vera/vera_addr16 vram/vram_upload tilemap/tilemap_stream layers/layer_config_tile layers/layer_enable_in_dc layers/layer_scroll audio/psg_core sprites/sprite_put sprites/sprite_hide sprites/sprite_enable expansion/exp_uart expansion/netcard
 CFLAGS = -t cx16 -O -Isrc -I$(BUILD)/gen -I$(X16LIB)/include -DX16LIB_HAVE_CFG
-LDSTACK = -Cl -Wl -D,__STACKSIZE__=0x0400
+LDSTACK = -Cl -Wl -D,__STACKSIZE__=0x0200
 SRCS = src/main.c src/game.c src/platform.c
 PIXEL_CLI ?= ../pixel-x16/PixelCli/bin/Release/net10.0-windows/pixel-cli.exe
 SOUND_CLI ?= ../sound-x16/SoundCli/bin/Release/net10.0/SoundCli.exe
