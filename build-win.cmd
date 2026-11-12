@@ -73,6 +73,12 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 "%PIXEL_CLI%" export --project . --resource numbers --out boot\numbers.bin --order num16:4,num8:4 --bytes 640
 if errorlevel 1 exit /b 1
+"%PIXEL_CLI%" export-picture --project . --resource bowesc --out boot\bowesc.bin
+if errorlevel 1 exit /b 1
+"%PIXEL_CLI%" export-picture --project . --resource bowubt --out boot\bowubt.bin
+if errorlevel 1 exit /b 1
+python tools\pack_bows.py
+if errorlevel 1 exit /b 1
 if "%SOUND_CLI%"=="" set SOUND_CLI=..\sound-x16\SoundCli\bin\Release\net10.0\SoundCli.exe
 if not exist "%SOUND_CLI%" (echo ERROR: sound-cli not found at %SOUND_CLI%. Set SOUND_CLI or run: dotnet build ..\sound-x16\SoundCli -c Release & exit /b 1)
 "%SOUND_CLI%" export --project . --resource sfx

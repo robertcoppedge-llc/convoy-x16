@@ -58,7 +58,7 @@
     "prgMax": 36864,
     "forbid": ["sprite_pool.o", "sprites.o"]
   },
-  "notes": "640x480 4bpp convoy plot. Sea tiles are assets/tiles/sea.x16tile.json (pixel-cli export-tiles -> boot/TILES.BIN at VRAM $00000). Overhead ship sprites are assets/sprites/plot.x16spr.json (pixel-cli export -> boot/SPRITES.BIN at $04000) with palette assets/palettes/main.x16pal.json (boot/PAL.BIN at $1FA00). The 64x64 tile map is filled by the program at $00400. Layer 1 stays the KERNAL text HUD. PSG voice 0 is the telegraph drone; assets/sounds/sfx.x16snd.json (sound-cli export) is the bell and helm tick on voices 2 and 3. The plan is docs/game-plan.md. This first slice is one machine: both stations on one keyboard. The -netcard link is the next slice.",
+  "notes": "640x480 4bpp convoy plot. Sea tiles are assets/tiles/sea.x16tile.json (pixel-cli export-tiles -> boot/TILES.BIN at VRAM $00000). The bridge bow is assets/pictures/bowesc.x16pic.json and bowubt.x16pic.json on layer 1 (map at $10000, atlas at $14000). Overhead ship sprites are assets/sprites/plot.x16spr.json with palette assets/palettes/main.x16pal.json. The chart's layer 1 is the KERNAL text HUD. PSG voice 0 is the telegraph drone; assets/sounds/sfx.x16snd.json is the bell and helm tick on voices 2 and 3. The plan is docs/game-plan.md.",
   "resources": {
     "palettes": [
       {
@@ -79,6 +79,26 @@
         "exporter": "pixel-cli export-tiles",
         "outputs": [{ "file": "boot/TILES.BIN", "bytes": 768 }],
         "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load (FILE_TO_VRAM)" }
+      }
+    ],
+    "pictures": [
+      {
+        "id": "bowesc",
+        "type": "picture",
+        "doc": "assets/pictures/bowesc.x16pic.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export-picture",
+        "outputs": [{ "file": "boot/bowesc.bin" }, { "file": "boot/bowmap.bin" }],
+        "placement": { "target": "vram", "addr": "0x14000", "loader": "file_load. Layer 1 on the bridge. Map at $10000 is shared with bowubt." }
+      },
+      {
+        "id": "bowubt",
+        "type": "picture",
+        "doc": "assets/pictures/bowubt.x16pic.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export-picture",
+        "outputs": [{ "file": "boot/bowubt.bin" }],
+        "placement": { "target": "vram", "addr": "0x14000", "loader": "file_load over the escort bow when the player is the boat" }
       }
     ],
     "sprites": [

@@ -1,6 +1,7 @@
 /*
- * 640x480 plot. Layer 0 is 16x16 4bpp sea tiles. Layer 1 is the KERNAL text.
- * Sprites sit between the layers. The link is the netcard UART (link.c).
+ * 640x480 plot. Layer 0 is 16x16 4bpp sea tiles. Layer 1 is the KERNAL text,
+ * except on the bridge, where it is the bow picture. Sprites sit between the
+ * layers, so the bow covers them. The link is the netcard UART (link.c).
  */
 #ifndef CONVOY_SMOKE
 #define CONVOY_SMOKE 0
@@ -69,6 +70,10 @@
 #define VIEW_BRIDGE 1
 #define VIEW_GLASS  2
 #define VIEW_ROOM   3
+/* Bow picture on layer 1. 128x64 map of 8x8 tiles, then one atlas.
+ * The atlas must end before the weapons at $18000. */
+#define VRAM_BOWMAP 0x10000UL
+#define VRAM_BOW    0x14000UL
 #define VRAM_WEAP   0x18000UL
 #define VRAM_DC     0x19200UL
 #define VRAM_GAUGE  0x19400UL
@@ -121,7 +126,8 @@ static unsigned char cache_bank[22];
 static unsigned int spr_idx[SPR_N];
 static int spr_x[SPR_N], spr_y[SPR_N];
 static unsigned char spr_b6[SPR_N], spr_b7[SPR_N];
-static unsigned char view, zoom, look_ofs, chrome;
+static unsigned char view, zoom, look_ofs, chrome, bow_on, bow_up;
+static unsigned char l1_reg[3];
 static unsigned char hub_ready;
 static void hub_forget(void);
 
@@ -209,13 +215,9 @@ static void blit_dc(unsigned char i, unsigned int off)
     X16_RAM_BANK = old;
 }
 
-static unsigned char sky_rows;
-
 static unsigned char sea_tile(unsigned char x, unsigned char y)
 {
-    unsigned char h;
-    if (y < sky_rows) return (unsigned char)((unsigned char)(y + 1) == sky_rows ? 5 : 4);
-    h = (unsigned char)((x * 13 + y * 7) & 31);
+    unsigned char h = (unsigned char)((x * 13 + y * 7) & 31);
     if (h == 0) return 1;
     if (h == 1) return 2;
     return 0;
@@ -352,46 +354,66 @@ static void clear_graticule(void)
     for (n = 0; n < 12; n++) wipe_mark(n);
 }
 
+static void save_text_layer(void)
+{
+    l1_reg[0] = VERA_L1_CONFIG;
+    l1_reg[1] = VERA_L1_MAPBASE;
+    l1_reg[2] = VERA_L1_TILEBASE;
+}
+
+/* The bridge bow is a 4bpp tile picture on layer 1. Colour 0 in the picture
+ * is empty, so the sea and the ships show around the hull. */
+static void show_bow(unsigned char on)
+{
+    if (on == bow_up) return;
+    bow_up = on;
+    if (on) {
+        layer_config_tile(1, VRAM_BOWMAP, VRAM_BOW, 2, 1, 8, 8, LAYER_BPP_4);
+        layer_scroll(1, 0, 0);
+        return;
+    }
+    VERA_L1_CONFIG = l1_reg[0];
+    VERA_L1_MAPBASE = l1_reg[1];
+    VERA_L1_TILEBASE = l1_reg[2];
+}
+
 static void paint_chrome(void)
 {
-    unsigned char r;
-    if (chrome == view) return;
+    unsigned char r, want;
+    /* The conning tower only shows a bow while the boat is on the surface. */
+    want = (unsigned char)(view == VIEW_BRIDGE &&
+            !(game_player() == ROLE_UBOAT && game_depth() >= 8));
+    if (chrome == view && bow_on == want) return;
     clear_graticule();
-    /* Ahead views keep a sky band in the tile map so the horizon stays put
-     * while the sea scrolls underneath it. The chart is sea all the way up. */
-    sky_rows = (view == VIEW_BRIDGE || view == VIEW_GLASS) ? 16 : 0;
-    fill_sea();
     if (view == VIEW_MAP) {
         bgcolor(COLOR_BLACK);
         for (r = 0; r < 60; r++)
             cclearxy(0, r, 60);
     } else if (view == VIEW_BRIDGE) {
-        bgcolor(HUB_BG);
-        for (r = 0; r < 14; r++) cclearxy(0, r, 60);
-        /* The window is clear so the sea and the hulls show, and the
-         * bulkhead covers anything outside it. */
+        /* The sea shows through. The bow itself is the picture on layer 1. */
         bgcolor(COLOR_BLACK);
-        for (r = 14; r < 36; r++) cclearxy(0, r, 60);
-        bgcolor(HUB_BG);
-        for (r = 36; r < 60; r++) cclearxy(0, r, 60);
+        for (r = 0; r < 60; r++) cclearxy(0, r, 80);
     } else if (view == VIEW_GLASS) {
         unsigned char col, row;
         for (row = 0; row < 60; row++) {
-            for (col = 0; col < 60; col++) {
+            for (col = 0; col < 80; col++) {
                 int dx, dy, in;
                 unsigned char bg;
                 if (game_player() == ROLE_UBOAT) {
-                    dx = (int)col - 29; dy = (int)row - 30;
-                    in = dx * dx + dy * dy <= 18 * 18;
+                    dx = (int)col - 40; dy = (int)row - 30;
+                    in = dx * dx + dy * dy <= 24 * 24;
                 } else {
-                    dx = (int)col - 16; dy = (int)row - 30;
-                    in = dx * dx + dy * dy <= 14 * 14;
-                    dx = (int)col - 42;
-                    in = in || (dx * dx + dy * dy <= 14 * 14);
+                    dx = (int)col - 22; dy = (int)row - 30;
+                    in = dx * dx + dy * dy <= 16 * 16;
+                    dx = (int)col - 58;
+                    in = in || (dx * dx + dy * dy <= 16 * 16);
                 }
-                /* Inside the glass is clear. Hulls sit between the layers,
-                 * so the mask hides whatever falls outside the circle. */
-                bg = in ? COLOR_BLACK : HUB_BG;
+                /* Sky and the horizon stay on this layer. The sea below is
+                 * clear so the scrolling water shows through the glass. */
+                if (!in) bg = HUB_BG;
+                else if (row < 24) bg = 8;
+                else if (row == 24) bg = COLOR_WHITE;
+                else bg = COLOR_BLACK;
                 bgcolor(bg);
                 cclearxy(col, row, 1);
             }
@@ -399,13 +421,13 @@ static void paint_chrome(void)
         if (game_player() == ROLE_UBOAT) {
             bgcolor(8);
             textcolor(COLOR_WHITE);
-            for (col = 14; col < 45; col += 2) cputcxy(col, 30, '-');
-            for (row = 16; row < 45; row += 2) cputcxy(29, row, '+');
-            cputcxy(29, 30, '+');
+            for (col = 20; col < 60; col += 2) cputcxy(col, 30, '-');
+            for (row = 12; row < 48; row += 2) cputcxy(40, row, '+');
+            cputcxy(40, 30, '+');
         }
     } else {
         bgcolor(HUB_BG);
-        for (r = 0; r < 60; r++) cclearxy(0, r, 60);
+        for (r = 0; r < 60; r++) cclearxy(0, r, 80);
         textcolor(COLOR_WHITE);
         cputsxy(6, 2, "BEARING");
         cputsxy(22, 2, "DEPTH");
@@ -414,16 +436,26 @@ static void paint_chrome(void)
         cputsxy(6, 36, "BATTERY");
         cputsxy(6, 48, "Y RISE   U DIVE");
     }
+    bow_on = want;
     chrome = view;
+    show_bow(want);
 }
+
+/* Westerly sea, in the same units as game_water. Waves run east and a little south. */
+#define WAVE_X 10
+#define WAVE_Y 4
+static int sea_u, sea_v;
+static unsigned int wind_p;
 
 static void draw_map(int camx, int camy)
 {
     unsigned char i;
     int x, y;
     int sc = 1 << zoom;
-    int hs = camx / FP / sc - MAP_MID + scroll_x / sc;
-    int vs = camy / FP / sc - MAP_MID + scroll_y / sc;
+    int hs, vs;
+    wind_p++;
+    hs = camx / FP / sc - MAP_MID + scroll_x / sc - (int)(wind_p >> 3);
+    vs = camy / FP / sc - MAP_MID + scroll_y / sc - (int)(wind_p >> 4);
     layer_scroll(0, (unsigned int)hs, (unsigned int)vs);
     for (i = 0; i < N_SHIP; i++) {
         unsigned char frame, kind;
@@ -576,12 +608,13 @@ static unsigned char project_ahead(int wx, int wy, int camx, int camy, int s, in
     int dy = (wy - camy) >> 4;
     int ahead, side;
     look_axes(dx, dy, s, c, &ahead, &side);
-    if (ahead < -48 || ahead > reach || side > 240 || side < -240) return 0;
+    /* The ahead views use the full 640. The chart stays 480, with the hub. */
+    if (ahead < -48 || ahead > reach || side > 320 || side < -320) return 0;
     if (ahead < 0) ahead = 0;
     if (mag > 1) side >>= 1;
-    *px = MAP_MID + side - hot;
+    *px = 320 + side - hot;
     *py = horizon + ((reach - ahead) >> 3) - hot;
-    if (*px < -16 || *px >= MAP_PX) return 0;
+    if (*px < -16 || *px >= 640) return 0;
     return 1;
 }
 
@@ -596,15 +629,15 @@ static void draw_ahead(int camx, int camy, unsigned char look)
     int reach = (view == VIEW_GLASS) ? 420 : 280;
     int mag = (view == VIEW_GLASS) ? 2 : 1;
     int mvx, mvy, along, across;
-    static int sea_u, acc_u;
-    /* Sideways drift follows your speed across the look. The horizon row
-     * stays fixed; only the sea under it moves. */
+    /* Waves keep the wind's heading. Subtract the ship's own way, then
+     * lay that on the glass: ahead comes down the window, abeam slides
+     * across. The horizon is painted on the layer above, so this scroll
+     * does not move it. */
     game_water(who, &mvx, &mvy);
-    look_axes(mvx, mvy, s, c, &along, &across);
-    acc_u += across + (along >> 1);
-    sea_u += acc_u >> 6;
-    acc_u = (int)(acc_u & 63);
-    layer_scroll(0, (unsigned int)sea_u, (unsigned int)(256 - horizon));
+    look_axes(WAVE_X - mvx, WAVE_Y - mvy, s, c, &along, &across);
+    sea_u -= across;
+    sea_v += along;
+    layer_scroll(0, (unsigned int)(sea_u >> 6), (unsigned int)(sea_v >> 6));
     slot = 0;
     if (game_player() == ROLE_ESCORT)
         slot = draw_ahead_one((unsigned char)(N_SHIP - 1), camx, camy, s, c, horizon, reach, mag, look, slot);
@@ -632,7 +665,7 @@ static void draw_ahead(int camx, int camy, unsigned char look)
         sprite_commit((unsigned char)(8 + i), (unsigned int)(IDX_TWAKE + (unsigned int)face * 4u), px, py, SPR_Z, PX16);
     }
     if (view == VIEW_GLASS && game_player() == ROLE_UBOAT)
-        write_front(40, IDX_CROSS, 204, 212, PX64);
+        write_front(40, IDX_CROSS, 292, 212, PX64);
     else
         write_sprite(40, IDX_CROSS, 0, 0, 0, PX64);
 }
@@ -687,6 +720,7 @@ static void draw_world(void)
  * the sea and the ships show. The boot screen is opaque blue cells. */
 static void clear_screen(void)
 {
+    show_bow(0);
     bgcolor(COLOR_BLACK);
     textcolor(COLOR_WHITE);
     clrscr();
@@ -716,6 +750,7 @@ static void hub_forget(void)
         for (c = 0; c < 20; c++) hub_mem[r][c] = 0;
     hub_ready = 0;
     chrome = 0xFF;
+    bow_on = 0xFF;
 }
 
 static void hub_row(unsigned char row)
@@ -902,6 +937,26 @@ static void draw_scopes(void)
     }
 }
 
+/* Sixteen compass points, 0 north then clockwise. One character fits; a
+ * three-digit degree line does not. */
+static char nyb(unsigned char n)
+{
+    return (char)(n < 10 ? '0' + n : 'A' + n - 10);
+}
+
+static void glass_bearing(void)
+{
+    unsigned char focus = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
+    unsigned char h = (unsigned char)(ships[focus].hdg >> 4);
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cputcxy(2, 2, 'H');
+    cputcxy(3, 2, nyb(h));
+    cputcxy(5, 2, 'L');
+    cputcxy(6, 2, nyb((unsigned char)((ships[focus].hdg + look_ofs) >> 4)));
+    bgcolor(COLOR_BLACK);
+}
+
 static void hud_play(void)
 {
     unsigned char focus;
@@ -911,10 +966,7 @@ static void hud_play(void)
     deg = (unsigned int)((ships[focus].hdg * 45u) >> 5);
     hub_set(0, desync ? "DESYNC" : (net ? "LINK" : "SOLO"));
     hub_set(1, game_player() == ROLE_UBOAT ? "U-BOAT" : "ESCORT");
-    if (view == VIEW_BRIDGE) hub_set(2, "BRIDGE");
-    else if (view == VIEW_GLASS) hub_set(2, game_player() == ROLE_UBOAT ? "PERISCOPE" : "BINOCULARS");
-    else if (view == VIEW_ROOM) hub_set(2, "CONTROL");
-    else if (zoom == 1) hub_set(2, "MAP 32");
+    if (zoom == 1) hub_set(2, "MAP 32");
     else if (zoom == 2) hub_set(2, "MAP 16");
     else if (zoom == 3) hub_set(2, "MAP 8");
     else hub_set(2, "MAP");
@@ -962,26 +1014,6 @@ static void hud_play(void)
         } else line[13] = 0;
         hub_set(5, line);
     }
-    {
-        char b[12];
-        unsigned int lk;
-        if (view == VIEW_GLASS) {
-            lk = (unsigned int)(((unsigned char)(ships[focus].hdg + look_ofs) * 45u) >> 5);
-            b[0] = 'H';
-            b[1] = (char)('0' + (deg / 100) % 10);
-            b[2] = (char)('0' + (deg / 10) % 10);
-            b[3] = (char)('0' + deg % 10);
-            b[4] = ' ';
-            b[5] = 'L';
-            b[6] = (char)('0' + (lk / 100) % 10);
-            b[7] = (char)('0' + (lk / 10) % 10);
-            b[8] = (char)('0' + lk % 10);
-            b[9] = 0;
-        } else {
-            b[0] = 0;
-        }
-        hub_set(6, b);
-    }
     if (!gfx_ok) hub_set(0, "NO ART");
     bgcolor(COLOR_BLACK);
 }
@@ -997,6 +1029,8 @@ static void begin_match(unsigned char as, unsigned char linked)
     step = 0;
     game_init(pick);
     game_set_player(as);
+    if (!load_vram(as == ROLE_UBOAT ? "bowubt.bin" : "bowesc.bin", VRAM_BOW))
+        gfx_ok = 0;
     cache_clear();
     hub_forget();
     clear_screen();
@@ -1139,7 +1173,10 @@ static void play_tick(unsigned char helm, unsigned char uhelm)
     if (snd_boom) { sfx_play(SFX_BOOM); snd_boom = 0; }
     if (snd_launch) { sfx_play(SFX_LAUNCH); snd_launch = 0; }
     sfx_tick();
-    if (game_winner()) stage = ST_OVER;
+    if (game_winner()) {
+        stage = ST_OVER;
+        set_view(VIEW_MAP);
+    }
 }
 
 static void hud_over(void)
@@ -1157,6 +1194,7 @@ void plat_init(void)
     clear_screen();
     display_init_640x480(0);
     layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    save_text_layer();
     gfx_ok = (unsigned char)(load_vram("tiles.bin", VRAM_TILES)
                           && load_vram("pal.bin", VERA_PALETTE_ADDR)
                           && load_vram("marks.bin", VRAM_MARKS));
@@ -1177,7 +1215,9 @@ void plat_init(void)
             !load_vram("weapons.bin", VRAM_WEAP) ||
             !load_vram("gauges.bin", VRAM_GAUGE) ||
             !load_vram("scope.bin", VRAM_SCOPE) ||
-            !load_vram("cross.bin", VRAM_CROSS))
+            !load_vram("cross.bin", VRAM_CROSS) ||
+            !load_vram("bowmap.bin", VRAM_BOWMAP) ||
+            !load_vram("bowesc.bin", VRAM_BOW))
             gfx_ok = 0;
         {
             static const char prof_nm[][12] = {
@@ -1314,8 +1354,9 @@ void plat_frame(void)
         uhelm = HELM_MID;
     }
     if (stage == ST_OVER) hud_over();
-    else hud_play();
-    draw_scopes();
+    else if (view == VIEW_MAP) hud_play();
+    else if (view == VIEW_GLASS) glass_bearing();
+    if (view == VIEW_MAP || stage == ST_OVER) draw_scopes();
     {
         unsigned int f = drone_f[ships[selected].tel];
         if (!f || game_player() != ROLE_ESCORT) psg_stop_voice(0);
