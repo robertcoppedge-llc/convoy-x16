@@ -1,7 +1,13 @@
 /*
- * 640x480 plot. Layer 0 is 16x16 4bpp sea tiles. Layer 1 is the KERNAL text,
+ * 640x480 plot. Layer 0 is 16x16 4bpp sea tiles during a match, and a 2bpp
+ * picture during the title and the credits. Layer 1 is the KERNAL text,
  * except on the bridge, where it is the bow picture. Sprites sit between the
  * layers, so the bow covers them. The link is the netcard UART (link.c).
+ *
+ * Title and credits are a disk phase (PHASECODE, bank 63, phase.bin).
+ * Pressing 1 or 2 loads that side's views from disk into banks and VRAM
+ * before the first frame of play. Changing view after that does not
+ * touch the disk.
  */
 #ifndef CONVOY_SMOKE
 #define CONVOY_SMOKE 0
@@ -24,6 +30,10 @@
 #include "game.h"
 #include "link.h"
 #include "platform.h"
+
+/* phase_run is linked at $A000. phase_call selects bank 63, calls it, and restores. */
+BANK_WRAPPER_DECL(phase_call, 63);
+void phase_run(void);
 
 #define VRAM_TILES  0x00000UL
 #define VRAM_MAP    0x00400UL
@@ -63,8 +73,12 @@
 #define BANK_TINY   26
 #define BANK_TINYWAKE 27
 #define BANK_CHARGE 28
-/* Sixteen 64px profile aspects per kind. Four frames to a bank, same as the hulls. */
+/* Sixteen 64px profile aspects per kind. Four frames to a bank, same as the hulls.
+ * The bridge and the glasses share them. Smaller copies, picked by range, follow. */
 #define BANK_PROF   29
+#define BANK_P32    45
+#define BANK_P16    49
+#define BANK_P8     50
 #define HUB_BG      2
 #define VIEW_MAP    0
 #define VIEW_BRIDGE 1
@@ -96,6 +110,17 @@
 #define ST_DIAL  2
 #define ST_PLAY  3
 #define ST_OVER  4
+#define ST_CREDITS 5
+
+/* phase.bin in bank 63. The op is what phase_run does on the next call. */
+#define BANK_SWAP 63
+#define OP_TITLE 1
+#define OP_CREDITS 2
+#define OP_GAME 3
+
+/* Sheets in banked RAM survive the title card. VRAM does not. */
+#define GOT_BANKS 0x01
+#define GOT_AHEAD 0x02
 
 static const unsigned int drone_f[8] = { 0, 180, 360, 620, 980, 120, 180, 280 };
 static const char *tel_name[8] = {
@@ -127,6 +152,8 @@ static unsigned int spr_idx[SPR_N];
 static int spr_x[SPR_N], spr_y[SPR_N];
 static unsigned char spr_b6[SPR_N], spr_b7[SPR_N];
 static unsigned char view, zoom, look_ofs, chrome, bow_on, bow_up;
+static unsigned char art, phase_op, phase_ready, card;
+static void phase_enter(void);
 static unsigned char l1_reg[3];
 static unsigned char hub_ready;
 static void hub_forget(void);
@@ -186,7 +213,8 @@ static void blit_frame(unsigned char slot, unsigned char bank0, unsigned char fr
     X16_RAM_BANK = old;
 }
 
-/* One frame of a 32x32 or 16x16 sheet. The whole sheet fits in one bank. */
+/* One frame of a smaller sheet into this ship's own 2 KB slot.
+ * The next ship starts 2 KB later, so two ranges can be on screen together. */
 static void blit_span(unsigned char slot, unsigned char bank, unsigned char frame, unsigned int bytes)
 {
     unsigned char old;
@@ -198,7 +226,7 @@ static void blit_span(unsigned char slot, unsigned char bank, unsigned char fram
     src = (unsigned int)(X16_BANK_WIN + (unsigned int)frame * bytes);
     old = X16_RAM_BANK;
     X16_RAM_BANK = bank;
-    vram_upload(VRAM_HULL + (unsigned long)slot * bytes, (const unsigned char *)src, bytes);
+    vram_upload(VRAM_HULL + (unsigned long)slot * HULL_B, (const unsigned char *)src, bytes);
     X16_RAM_BANK = old;
 }
 
@@ -475,11 +503,11 @@ static void draw_map(int camx, int camy)
             sz = PX64;
         } else if (zoom == 1) {
             blit_span(i, (unsigned char)(BANK_MID + kind), frame, 512u);
-            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 16u);
+            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 64u);
             sz = PX32;
         } else if (zoom == 2) {
             blit_span(i, BANK_TINY, (unsigned char)(kind * 16u + frame), 128u);
-            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 4u);
+            idx = (unsigned int)(IDX_HULL0 + (unsigned int)i * 64u);
             sz = PX16;
         } else {
             idx = (unsigned int)((VRAM_ZOOM >> 5) + (unsigned int)kind * 16u + frame);
@@ -576,46 +604,59 @@ static void look_axes(int dx, int dy, int s, int c, int *ahead, int *side)
     *side = (int)(((long)dx * c + (long)dy * s) >> 7);
 }
 
-static unsigned char project_ahead(int wx, int wy, int camx, int camy, int s, int c,
-                                  int horizon, int reach, int mag, int hot, int *px, int *py);
+/* Filled once per ahead frame so the per-ship call stays small. */
+static int ah_x, ah_y, ah_s, ah_c, ah_h, ah_reach;
+static unsigned char ah_look;
+static int pr_x, pr_y;
+static unsigned char pr_band;
 
-static unsigned char draw_ahead_one(unsigned char i, int camx, int camy, int s, int c,
-                                   int horizon, int reach, int mag, unsigned char look,
-                                   unsigned char slot)
+/* How far the waterline sits under the horizon, one step per sprite size. */
+static const unsigned char ahead_drop[4] = { 40, 16, 6, 2 };
+static const unsigned char ahead_sz[4] = { PX64, PX32, PX16, PX8 };
+
+static unsigned char project_ahead(int wx, int wy, int hot)
 {
-    int px, py;
-    unsigned char face;
+    int dx = (wx - ah_x) >> 4;
+    int dy = (wy - ah_y) >> 4;
+    int ahead, side;
+    look_axes(dx, dy, ah_s, ah_c, &ahead, &side);
+    if (ahead < -48 || ahead > ah_reach || side > 320 || side < -320) return 0;
+    if (ahead < 0) ahead = 0;
+    /* Same sheets as the bridge. Bearings spread further across the glass,
+     * and halving the range picks the next size up. */
+    if (view == VIEW_GLASS) {
+        side <<= 1;
+        ahead >>= 1;
+    }
+    pr_band = (unsigned char)(ahead < 72 ? 0 : ahead < 140 ? 1 : ahead < 240 ? 2 : 3);
+    if (hot == 0) hot = 32 >> pr_band;
+    pr_x = 320 + side - hot;
+    pr_y = ah_h + ahead_drop[pr_band] - hot;
+    if (pr_x < -16 || pr_x >= 640) return 0;
+    return 1;
+}
+
+static unsigned char draw_ahead_one(unsigned char i, unsigned char slot)
+{
+    unsigned char face, kind;
     unsigned int idx;
     if (slot >= 8 || !game_show_ship(i)) return slot;
     if ((game_player() == ROLE_UBOAT && i == N_SHIP - 1) ||
         (game_player() == ROLE_ESCORT && i == selected))
         return slot;
-    if (!project_ahead(ships[i].x, ships[i].y, camx, camy, s, c, horizon, reach, mag, 32, &px, &py))
-        return slot;
-    /* One of sixteen painted aspects, copied out of banked RAM into this slot. */
-    face = (unsigned char)(((ships[i].hdg + 128 - look) >> 4) & 15);
-    blit_frame(slot, (unsigned char)(BANK_PROF + (unsigned char)(kind_i(ships[i].kind) * 4)), face);
+    if (!project_ahead(ships[i].x, ships[i].y, 0)) return slot;
+    face = (unsigned char)(((ships[i].hdg + 128 - ah_look) >> 4) & 15);
+    kind = kind_i(ships[i].kind);
+    if (pr_band == 0)
+        blit_frame(slot, (unsigned char)(BANK_PROF + (unsigned char)(kind * 4)), face);
+    else if (pr_band == 1)
+        blit_span(slot, (unsigned char)(BANK_P32 + kind), face, 512u);
+    else
+        blit_span(slot, pr_band == 2 ? BANK_P16 : BANK_P8,
+                  (unsigned char)(kind * 16u + face), pr_band == 2 ? 128u : 32u);
     idx = (unsigned int)(IDX_HULL0 + (unsigned int)slot * 64u);
-    sprite_commit(slot, idx, px, py, SPR_Z, PX64);
+    sprite_commit(slot, idx, pr_x, pr_y, SPR_Z, ahead_sz[pr_band]);
     return (unsigned char)(slot + 1);
-}
-
-static unsigned char project_ahead(int wx, int wy, int camx, int camy, int s, int c,
-                                  int horizon, int reach, int mag, int hot,
-                                  int *px, int *py)
-{
-    int dx = (wx - camx) >> 4;
-    int dy = (wy - camy) >> 4;
-    int ahead, side;
-    look_axes(dx, dy, s, c, &ahead, &side);
-    /* The ahead views use the full 640. The chart stays 480, with the hub. */
-    if (ahead < -48 || ahead > reach || side > 320 || side < -320) return 0;
-    if (ahead < 0) ahead = 0;
-    if (mag > 1) side >>= 1;
-    *px = 320 + side - hot;
-    *py = horizon + ((reach - ahead) >> 3) - hot;
-    if (*px < -16 || *px >= 640) return 0;
-    return 1;
 }
 
 static void draw_ahead(int camx, int camy, unsigned char look)
@@ -623,34 +664,36 @@ static void draw_ahead(int camx, int camy, unsigned char look)
     unsigned char i, slot;
     unsigned char li = (unsigned char)(look >> 4);
     unsigned char who = (game_player() == ROLE_UBOAT) ? (unsigned char)(N_SHIP - 1) : selected;
-    int s = sin16[li];
-    int c = sin16[(li + 4) & 15];
-    int horizon = (view == VIEW_GLASS) ? 200 : 168;
-    int reach = (view == VIEW_GLASS) ? 420 : 280;
-    int mag = (view == VIEW_GLASS) ? 2 : 1;
     int mvx, mvy, along, across;
+    ah_look = look;
+    ah_s = sin16[li];
+    ah_c = sin16[(li + 4) & 15];
+    ah_h = (view == VIEW_GLASS) ? 200 : 168;
+    ah_reach = (view == VIEW_GLASS) ? 420 : 280;
+    ah_x = camx;
+    ah_y = camy;
     /* Waves keep the wind's heading. Subtract the ship's own way, then
      * lay that on the glass: ahead comes down the window, abeam slides
      * across. The horizon is painted on the layer above, so this scroll
      * does not move it. */
     game_water(who, &mvx, &mvy);
-    look_axes(WAVE_X - mvx, WAVE_Y - mvy, s, c, &along, &across);
+    look_axes(WAVE_X - mvx, WAVE_Y - mvy, ah_s, ah_c, &along, &across);
     sea_u -= across;
     sea_v += along;
     layer_scroll(0, (unsigned int)(sea_u >> 6), (unsigned int)(sea_v >> 6));
     slot = 0;
     if (game_player() == ROLE_ESCORT)
-        slot = draw_ahead_one((unsigned char)(N_SHIP - 1), camx, camy, s, c, horizon, reach, mag, look, slot);
+        slot = draw_ahead_one((unsigned char)(N_SHIP - 1), slot);
     for (i = 0; i < N_SHIP && slot < 8; i++) {
         if (game_player() == ROLE_ESCORT && i == N_SHIP - 1) continue;
-        slot = draw_ahead_one(i, camx, camy, s, c, horizon, reach, mag, look, slot);
+        slot = draw_ahead_one(i, slot);
     }
     while (slot < 8) {
         write_sprite(slot, 0, 0, 0, 0, 0);
         slot++;
     }
     for (i = 0; i < N_TORP; i++) {
-        int x, y, px, py;
+        int x, y;
         unsigned char face;
         if (!game_torp_on(i)) {
             write_sprite((unsigned char)(8 + i), 0, 0, 0, 0, 0);
@@ -658,11 +701,11 @@ static void draw_ahead(int camx, int camy, unsigned char look)
         }
         face = (unsigned char)((game_torp_hdg(i) - look) >> 4);
         game_torp_xy(i, &x, &y);
-        if (!project_ahead(x, y, camx, camy, s, c, horizon, reach, mag, 8, &px, &py)) {
+        if (!project_ahead(x, y, 8)) {
             write_sprite((unsigned char)(8 + i), 0, 0, 0, 0, 0);
             continue;
         }
-        sprite_commit((unsigned char)(8 + i), (unsigned int)(IDX_TWAKE + (unsigned int)face * 4u), px, py, SPR_Z, PX16);
+        sprite_commit((unsigned char)(8 + i), (unsigned int)(IDX_TWAKE + (unsigned int)face * 4u), pr_x, pr_y, SPR_Z, PX16);
     }
     if (view == VIEW_GLASS && game_player() == ROLE_UBOAT)
         write_front(40, IDX_CROSS, 292, 212, PX64);
@@ -1018,6 +1061,34 @@ static void hud_play(void)
     bgcolor(COLOR_BLACK);
 }
 
+static unsigned char vram_keep(const char *name, unsigned long addr)
+{
+    unsigned char old = X16_RAM_BANK;
+    unsigned char ok = load_vram(name, addr);
+    X16_RAM_BANK = old;
+    return ok;
+}
+
+static unsigned char banks_ok(const char *name, unsigned char first, unsigned char nbanks, unsigned int min)
+{
+    unsigned int n;
+    return (unsigned char)(file_load_to_banks(name, first,
+        (unsigned char)(first + nbanks - 1), min, &n) == FILE_OK);
+}
+
+static void phase_enter(void)
+{
+    if (!phase_ready) {
+        X16_RAM_BANK = BANK_SWAP;
+        if (file_load("phase.bin", FILE_TO_RAM, 0xA000) != FILE_OK) {
+            gfx_ok = 0;
+            return;
+        }
+        phase_ready = 1;
+    }
+    phase_call(phase_run);
+}
+
 static void begin_match(unsigned char as, unsigned char linked)
 {
     role = as;
@@ -1029,8 +1100,15 @@ static void begin_match(unsigned char as, unsigned char linked)
     step = 0;
     game_init(pick);
     game_set_player(as);
-    if (!load_vram(as == ROLE_UBOAT ? "bowubt.bin" : "bowesc.bin", VRAM_BOW))
-        gfx_ok = 0;
+    card = 0;
+    view = VIEW_MAP;
+    zoom = 0;
+    show_bow(0);
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    layer_scroll(0, 0, 0);
+    phase_op = OP_GAME;
+    phase_enter();
+    fill_sea();
     cache_clear();
     hub_forget();
     clear_screen();
@@ -1039,15 +1117,33 @@ static void begin_match(unsigned char as, unsigned char linked)
 
 static void title_screen(void)
 {
-    hub_instructions();
-    hub_set(0, "CONVOY");
-    hub_set(1, "1 ESCORT");
-    hub_set(2, "2 U-BOAT");
-    hub_set(3, "3 LINK");
-    hub_set(4, "T CYCLES THE BOAT");
-    hub_set(5, boat_name(pick));
-    hub_set(6, "O MAP B BRIDGE");
-    hub_set(7, "G GLASS C ROOM");
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cclearxy(0, 49, 80);
+    cclearxy(0, 50, 80);
+    cclearxy(0, 52, 80);
+    cclearxy(0, 54, 80);
+    cputsxy(2, 50, "1 ESCORT");
+    cputsxy(16, 50, "2 U-BOAT");
+    cputsxy(30, 50, "3 LINK");
+    cputsxy(2, 52, "T ");
+    cputs(boat_name(pick));
+    cputsxy(2, 54, "C CREDITS");
+    bgcolor(COLOR_BLACK);
+}
+
+static void credits_screen(void)
+{
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cclearxy(0, 49, 80);
+    cclearxy(0, 50, 80);
+    cclearxy(0, 52, 80);
+    cclearxy(0, 54, 80);
+    cputsxy(2, 50, "CONVOY FOR THE COMMANDER X16");
+    cputsxy(2, 52, "ART AND CODE IN THIS PROJECT");
+    cputsxy(2, 54, "ANY KEY");
+    bgcolor(COLOR_BLACK);
 }
 
 static void host_screen(void)
@@ -1193,43 +1289,8 @@ void plat_init(void)
     videomode(VIDEOMODE_80x60);
     clear_screen();
     display_init_640x480(0);
-    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
     save_text_layer();
-    gfx_ok = (unsigned char)(load_vram("tiles.bin", VRAM_TILES)
-                          && load_vram("pal.bin", VERA_PALETTE_ADDR)
-                          && load_vram("marks.bin", VRAM_MARKS));
-    {
-        unsigned int n;
-        if (file_load_to_banks("escort.bin", BANK_ESCORT, BANK_ESCORT + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("merchant.bin", BANK_MERCH, BANK_MERCH + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("tanker.bin", BANK_TANKER, BANK_TANKER + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("uboat.bin", BANK_UBOAT, BANK_UBOAT + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("wake.bin", BANK_WAKE, BANK_WAKE + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("mid.bin", BANK_MID, BANK_MID + 3, 32768u, &n) != FILE_OK ||
-            file_load_to_banks("midwake.bin", BANK_MIDWAKE, BANK_MIDWAKE, 8192u, &n) != FILE_OK ||
-            file_load_to_banks("tiny.bin", BANK_TINY, BANK_TINY, 8192u, &n) != FILE_OK ||
-            file_load_to_banks("tinywake.bin", BANK_TINYWAKE, BANK_TINYWAKE, 2048u, &n) != FILE_OK ||
-            file_load_to_banks("charge.bin", BANK_CHARGE, BANK_CHARGE, 4096u, &n) != FILE_OK ||
-            !load_vram("zoom.bin", VRAM_ZOOM) ||
-            !load_vram("numbers.bin", VRAM_NUM) ||
-            !load_vram("weapons.bin", VRAM_WEAP) ||
-            !load_vram("gauges.bin", VRAM_GAUGE) ||
-            !load_vram("scope.bin", VRAM_SCOPE) ||
-            !load_vram("cross.bin", VRAM_CROSS) ||
-            !load_vram("bowmap.bin", VRAM_BOWMAP) ||
-            !load_vram("bowesc.bin", VRAM_BOW))
-            gfx_ok = 0;
-        {
-            static const char prof_nm[][12] = {
-                "profesc.bin", "profmer.bin", "proftnk.bin", "profubt.bin"
-            };
-            for (i = 0; i < 4; i++) {
-                X16_RAM_BANK = (unsigned char)(BANK_PROF + (unsigned char)(i << 2));
-                if (file_load(prof_nm[i], FILE_TO_RAM, 0xA000) != FILE_OK) gfx_ok = 0;
-            }
-        }
-    }
-    fill_sea();
+    gfx_ok = load_vram("pal.bin", VERA_PALETTE_ADDR);
     layer_enable_in_dc(0, 1);
     layer_enable_in_dc(1, 1);
     sprite_global_enable(1);
@@ -1251,6 +1312,16 @@ void plat_init(void)
     }
     game_init(pick);
     clear_screen();
+    phase_op = OP_TITLE;
+    phase_enter();
+    card = 1;
+#if CONVOY_SMOKE
+    /* The smoke run never reaches a match, so prove the chart files open too. */
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    phase_op = OP_GAME;
+    phase_enter();
+    fill_sea();
+#endif
 }
 
 void plat_frame(void)
@@ -1260,14 +1331,19 @@ void plat_frame(void)
     waitvsync();
     while (kbhit()) {
         k = (unsigned char)cgetc();
-        if (stage == ST_TITLE) {
+        if (stage == ST_CREDITS) {
+            stage = ST_TITLE;
+            card = 0;
+            clear_screen();
+        } else if (stage == ST_TITLE) {
             if (k == '1') begin_match(ROLE_ESCORT, 0);
             else if (k == '2') begin_match(ROLE_UBOAT, 0);
             else if (k == '3') { stage = ST_HOST; clear_screen(); }
+            else if (k == 'c' || k == 'C') { stage = ST_CREDITS; card = 0; }
             else if (k == 't' || k == 'T') {
                 pick = (unsigned char)((pick + 1) % BOAT_N);
                 game_set_uboat(pick);
-            } else apply_view_key(k);
+            }
         } else if (stage == ST_HOST) {
             if (k == 27 || k == 3) { stage = ST_TITLE; clear_screen(); }
             else if (k == 'e' || k == 'E') role = ROLE_ESCORT;
@@ -1303,34 +1379,46 @@ void plat_frame(void)
             }
             apply_play_key(k);
         } else if (stage == ST_OVER) {
-            stage = ST_TITLE;
+            stage = ST_CREDITS;
+            card = 0;
             link_reset();
             game_init(pick);
             hub_forget();
-            clear_screen();
         }
     }
 
+    if (stage == ST_TITLE || stage == ST_HOST || stage == ST_DIAL) {
+        if (card != 1) {
+            clear_screen();
+            phase_op = OP_TITLE;
+            phase_enter();
+            card = 1;
+        }
+    }
+    if (stage == ST_CREDITS) {
+        if (card != 2) {
+            clear_screen();
+            phase_op = OP_CREDITS;
+            phase_enter();
+            card = 2;
+        }
+        credits_screen();
+        return;
+    }
     if (stage == ST_TITLE) {
-        draw_world();
         title_screen();
-        draw_scopes();
         return;
     }
     if (stage == ST_HOST) {
-        draw_world();
         host_screen();
-        draw_scopes();
         return;
     }
     if (stage == ST_DIAL) {
         unsigned char side, data[4];
         link_pump(&side, data);
-        draw_world();
         hub_row(16);
         cputs(link_status());
         bgcolor(COLOR_BLACK);
-        draw_scopes();
         if (link_state() == LINK_UP) begin_match(role, 1);
         else if (link_state() == LINK_FAIL) {
             hub_row(18);
@@ -1363,6 +1451,78 @@ void plat_frame(void)
         else psg_set_voice(0, f, 28, PSG_WAVE_TRIANGLE, 32);
     }
 }
+
+#pragma code-name(push, "PHASECODE")
+#pragma rodata-name(push, "PHASECODE")
+
+static void show_card(const char *name)
+{
+    unsigned char old = X16_RAM_BANK;
+    if (file_load(name, FILE_TO_VRAM(0), 0) != FILE_OK) gfx_ok = 0;
+    X16_RAM_BANK = old;
+    layer_config_bitmap(0, 0, LAYER_BPP_2, 1);
+    layer_scroll(0, 0, 0);
+    hide_sprites();
+}
+
+void phase_run(void)
+{
+    switch (phase_op) {
+    case OP_TITLE:
+        show_card("title.bin");
+        break;
+    case OP_CREDITS:
+        show_card("credits.bin");
+        break;
+    case OP_GAME:
+        if (!(art & GOT_BANKS)) {
+            if (!banks_ok("escort.bin", BANK_ESCORT, 4, 32768u) ||
+                !banks_ok("merchant.bin", BANK_MERCH, 4, 32768u) ||
+                !banks_ok("tanker.bin", BANK_TANKER, 4, 32768u) ||
+                !banks_ok("uboat.bin", BANK_UBOAT, 4, 32768u) ||
+                !banks_ok("charge.bin", BANK_CHARGE, 1, 4096u))
+                gfx_ok = 0;
+            else art = (unsigned char)(art | GOT_BANKS);
+        }
+        if (!(art & GOT_AHEAD)) {
+            if (!banks_ok("profesc.bin", BANK_PROF, 4, 32768u) ||
+                !banks_ok("profmer.bin", (unsigned char)(BANK_PROF + 4), 4, 32768u) ||
+                !banks_ok("proftnk.bin", (unsigned char)(BANK_PROF + 8), 4, 32768u) ||
+                !banks_ok("profubt.bin", (unsigned char)(BANK_PROF + 12), 4, 32768u) ||
+                !banks_ok("p32esc.bin", BANK_P32, 1, 8192u) ||
+                !banks_ok("p32mer.bin", (unsigned char)(BANK_P32 + 1), 1, 8192u) ||
+                !banks_ok("p32tnk.bin", (unsigned char)(BANK_P32 + 2), 1, 8192u) ||
+                !banks_ok("p32ubt.bin", (unsigned char)(BANK_P32 + 3), 1, 8192u) ||
+                !banks_ok("p16prof.bin", BANK_P16, 1, 8192u) ||
+                !banks_ok("p8prof.bin", BANK_P8, 1, 2048u) ||
+                !banks_ok("mid.bin", BANK_MID, 4, 32768u) ||
+                !banks_ok("tiny.bin", BANK_TINY, 1, 8192u))
+                gfx_ok = 0;
+            else art = (unsigned char)(art | GOT_AHEAD);
+        }
+        /* VRAM is shared with the title card, so every match reloads it.
+         * The sheets above stay in their banks, and none of this runs again
+         * when the view changes. */
+        if (!vram_keep("tiles.bin", VRAM_TILES) ||
+            !vram_keep("marks.bin", VRAM_MARKS) ||
+            !vram_keep("numbers.bin", VRAM_NUM) ||
+            !vram_keep("weapons.bin", VRAM_WEAP) ||
+            !vram_keep("scope.bin", VRAM_SCOPE) ||
+            !vram_keep("zoom.bin", VRAM_ZOOM) ||
+            !vram_keep("bowmap.bin", VRAM_BOWMAP) ||
+            !vram_keep(role == ROLE_UBOAT ? "bowubt.bin" : "bowesc.bin", VRAM_BOW))
+            gfx_ok = 0;
+        if (role == ROLE_UBOAT &&
+            (!vram_keep("cross.bin", VRAM_CROSS) || !vram_keep("gauges.bin", VRAM_GAUGE)))
+            gfx_ok = 0;
+        break;
+    default:
+        break;
+    }
+}
+
+#pragma rodata-name(pop)
+#pragma code-name(pop)
 
 #if CONVOY_SMOKE
 static void smoke_puts(const char *m)

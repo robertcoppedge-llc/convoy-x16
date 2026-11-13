@@ -5,7 +5,7 @@
   "displayName": "Convoy (X16)",
   "kind": "app",
   "genre": ["single-screen"],
-  "elements": ["sprites", "tiles", "sound", "text"],
+  "elements": ["sprites", "pictures", "tiles", "sound", "text"],
   "targets": [
     {
       "id": "CONVOY",
@@ -58,7 +58,7 @@
     "prgMax": 36864,
     "forbid": ["sprite_pool.o", "sprites.o"]
   },
-  "notes": "640x480 4bpp convoy plot. Sea tiles are assets/tiles/sea.x16tile.json (pixel-cli export-tiles -> boot/TILES.BIN at VRAM $00000). The bridge bow is assets/pictures/bowesc.x16pic.json and bowubt.x16pic.json on layer 1 (map at $10000, atlas at $14000). Overhead ship sprites are assets/sprites/plot.x16spr.json with palette assets/palettes/main.x16pal.json. The chart's layer 1 is the KERNAL text HUD. PSG voice 0 is the telegraph drone; assets/sounds/sfx.x16snd.json is the bell and helm tick on voices 2 and 3. The plan is docs/game-plan.md.",
+  "notes": "One sprite document, assets/sprites/game.x16spr.json, holds every in-game sprite: chart hulls, bridge profiles, zoom steps, scopes, gauges, weapons, and marks. Pictures in this same project are the escort bow, the U-boat bow, the title card, and the credits card (assets/pictures). Sea tiles are assets/tiles/sea.x16tile.json. Palette is assets/palettes/main.x16pal.json. The plan is docs/game-plan.md.",
   "resources": {
     "palettes": [
       {
@@ -99,22 +99,31 @@
         "exporter": "pixel-cli export-picture",
         "outputs": [{ "file": "boot/bowubt.bin" }],
         "placement": { "target": "vram", "addr": "0x14000", "loader": "file_load over the escort bow when the player is the boat" }
+      },
+      {
+        "id": "title",
+        "type": "picture",
+        "doc": "assets/pictures/title.x16pic.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export-picture",
+        "outputs": [{ "file": "boot/title.bin", "bytes": 76800 }],
+        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load. Layer 0 bitmap, title phase only. 2bpp because a 4bpp 640x480 picture does not fit VERA." }
+      },
+      {
+        "id": "credits",
+        "type": "picture",
+        "doc": "assets/pictures/credits.x16pic.json",
+        "tool": "pixel",
+        "exporter": "pixel-cli export-picture",
+        "outputs": [{ "file": "boot/credits.bin", "bytes": 76800 }],
+        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load over the title card. Credits phase only." }
       }
     ],
     "sprites": [
       {
-        "id": "plot",
+        "id": "game",
         "type": "sprites",
-        "doc": "assets/sprites/plot.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/SPRITES.BIN", "bytes": 1280 }],
-        "placement": { "target": "vram", "addr": "0x04000", "loader": "kept for the Pixel sheet of the small plot icons" }
-      },
-      {
-        "id": "hulls",
-        "type": "sprites",
-        "doc": "assets/sprites/hulls.x16spr.json",
+        "doc": "assets/sprites/game.x16spr.json",
         "tool": "pixel",
         "exporter": "pixel-cli export",
         "outputs": [
@@ -122,113 +131,25 @@
           { "file": "boot/merchant.bin", "bytes": 32768 },
           { "file": "boot/tanker.bin", "bytes": 32768 },
           { "file": "boot/uboat.bin", "bytes": 32768 },
-          { "file": "boot/wake.bin", "bytes": 32768 }
-        ],
-        "placement": { "target": "bank", "addr": "1", "loader": "file_load_to_banks, one file per sheet" }
-      },
-      {
-        "id": "profiles",
-        "type": "sprites",
-        "doc": "assets/sprites/profiles.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [
+          { "file": "boot/wake.bin", "bytes": 32768 },
           { "file": "boot/profesc.bin", "bytes": 32768 },
           { "file": "boot/profmer.bin", "bytes": 32768 },
           { "file": "boot/proftnk.bin", "bytes": 32768 },
-          { "file": "boot/profubt.bin", "bytes": 32768 }
-        ],
-        "placement": { "target": "bank", "addr": "29", "loader": "file_load across banks 29-44, one 64px aspect blitted into a hull slot" }
-      },
-      {
-        "id": "zoom",
-        "type": "sprites",
-        "doc": "assets/sprites/zoom.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/zoom.bin", "bytes": 2560 }],
-        "placement": { "target": "vram", "addr": "0x04200", "loader": "file_load (FILE_TO_VRAM)" }
-      },
-      {
-        "id": "marks",
-        "type": "sprites",
-        "doc": "assets/sprites/marks.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [
+          { "file": "boot/profubt.bin", "bytes": 32768 },
+          { "file": "boot/zoom.bin", "bytes": 2560 },
           { "file": "boot/marks.bin", "bytes": 256 },
-          { "file": "boot/cross.bin", "bytes": 2048 }
-        ],
-        "placement": { "target": "vram", "addr": "0x04000", "loader": "marks at $04000, crosshair at $03800" }
-      },
-      {
-        "id": "scope",
-        "type": "sprites",
-        "doc": "assets/sprites/scope.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/scope.bin", "bytes": 4992 }],
-        "placement": { "target": "vram", "addr": "0x02400", "loader": "file_load (FILE_TO_VRAM)" }
-      },
-      {
-        "id": "gauges",
-        "type": "sprites",
-        "doc": "assets/sprites/gauges.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/gauges.bin", "bytes": 6656 }],
-        "placement": { "target": "vram", "addr": "0x19400", "loader": "file_load (FILE_TO_VRAM)" }
-      },
-      {
-        "id": "weapons",
-        "type": "sprites",
-        "doc": "assets/sprites/weapons.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/weapons.bin", "bytes": 4608 }],
-        "placement": { "target": "vram", "addr": "0x18000", "loader": "file_load (FILE_TO_VRAM)" }
-      },
-      {
-        "id": "mid",
-        "type": "sprites",
-        "doc": "assets/sprites/mid.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [
+          { "file": "boot/cross.bin", "bytes": 2048 },
+          { "file": "boot/scope.bin", "bytes": 4992 },
+          { "file": "boot/gauges.bin", "bytes": 6656 },
+          { "file": "boot/weapons.bin", "bytes": 4608 },
           { "file": "boot/mid.bin", "bytes": 32768 },
-          { "file": "boot/midwake.bin", "bytes": 8192 }
-        ],
-        "placement": { "target": "bank", "addr": "21", "loader": "file_load_to_banks" }
-      },
-      {
-        "id": "tiny",
-        "type": "sprites",
-        "doc": "assets/sprites/tiny.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [
+          { "file": "boot/midwake.bin", "bytes": 8192 },
           { "file": "boot/tiny.bin", "bytes": 8192 },
-          { "file": "boot/tinywake.bin", "bytes": 2048 }
+          { "file": "boot/tinywake.bin", "bytes": 2048 },
+          { "file": "boot/charge.bin", "bytes": 4096 },
+          { "file": "boot/numbers.bin", "bytes": 640 }
         ],
-        "placement": { "target": "bank", "addr": "26", "loader": "file_load_to_banks" }
-      },
-      {
-        "id": "charge",
-        "type": "sprites",
-        "doc": "assets/sprites/charge.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/charge.bin", "bytes": 4096 }],
-        "placement": { "target": "bank", "addr": "28", "loader": "file_load_to_banks" }
-      },
-      {
-        "id": "numbers",
-        "type": "sprites",
-        "doc": "assets/sprites/numbers.x16spr.json",
-        "tool": "pixel",
-        "exporter": "pixel-cli export",
-        "outputs": [{ "file": "boot/numbers.bin", "bytes": 640 }],
-        "placement": { "target": "vram", "addr": "0x04C00", "loader": "file_load (FILE_TO_VRAM)" }
+        "placement": { "target": "bank", "addr": "1", "loader": "One document. Chart sheets, bridge profile sheets, and the zoom sheets export to the bank and VRAM files. Sheet ids are chart-*, bridge-*, z32-*, z16-*, z8-*." }
       }
     ],
     "sounds": [

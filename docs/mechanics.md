@@ -4,6 +4,12 @@ What the program does today. [game-plan.md](game-plan.md) is the design, includi
 
 Where those pieces sit in memory is [banking.md](banking.md).
 
+## Phases
+
+The title is a picture, `assets/pictures/title.x16pic.json`, with the choices along the bottom. `1` starts an escort match. `2` starts a U-boat match. `3` is the link. `T` cycles the boat type. `C` is the credits picture, `assets/pictures/credits.x16pic.json`. Any key on the credits returns to the title. After a win, any key opens the credits.
+
+`1` and `2` read that side's views from disk before the sea is drawn. The chart, the bridge, the glasses, the zoom steps, and the U-boat's control room are then in memory. Switching among them does not read the disk. An escort match does not load the control-room gauges or the periscope crosshair. A U-boat match does not load the escort's bow. Both matches load every hull you can look at, because the other side is on the screen.
+
 ## Frame
 
 `main` calls `plat_frame` once per vertical blank.
@@ -50,7 +56,7 @@ The glasses are a mask: two circles for the escort, one for the periscope. Sky a
 
 The control room is dials for heading, depth, and planes, plus tube and battery lamps. It is not a window on the sea.
 
-Sixteen aspects, 22.5° each, because 16 divides 256. Frame 0 is bow-on in the ahead view and bow-north on the chart, then clockwise. The ahead-view sheets are banks 29–44. The chart sheets are banks 1–28. The frame you can see is copied into a sprite slot. The machine cannot scale a sprite; a 64-pixel image shown as 16 pixels would be a strip, so the zoom levels are separate sheets.
+Sixteen aspects, 22.5° each, because 16 divides 256. Frame 0 is bow-on in the ahead view and bow-north on the chart, then clockwise. The bridge and the glasses use the same sixteen aspects. Range picks 64, 32, 16, or 8 pixels, and the waterline stays a short step under the horizon. A far ship is the small sprite on that line. The glasses use those same sheets one size larger, and the bearings spread further across the glass. The chart's `Z` sizes are a different set, overhead, and they stay. The ahead-view sheets are banks 29–44, with the smaller copies in banks 45–50. The chart sheets are banks 1–28. The frame you can see is copied into that ship's slot. The machine cannot scale a sprite; a 64-pixel image shown as 16 pixels would be a strip, so each size is its own sheet.
 
 ## Sea and wind
 
