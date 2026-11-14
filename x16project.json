@@ -52,7 +52,7 @@
   ],
   "lib": {
     "model": "c",
-    "libPath": "../../x16-lib-poc",
+    "libPath": "../x16-lib-poc",
     "modules": [
       "display",
       "fileio/file_load",
