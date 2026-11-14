@@ -1,355 +1,356 @@
 {
   "format": "x16.exports",
+  "schema": 1,
   "records": {
     "bowesc": {
-      "doc": "assets/pictures/bowesc.x16pic.json",
+      "tool": "pixel",
       "format": "x16.picture",
+      "doc": "assets/pictures/bowesc.x16pic.json",
+      "time": "2026-11-13T15:58:34-06:00",
       "outputs": [
         {
-          "bytes": 15360,
-          "file": "boot/BOWESC.BIN"
+          "file": "boot/BOWESC.BIN",
+          "bytes": 15360
         }
       ],
       "resmap": [
         {
-          "file": "BOWESC.BIN",
-          "kind": "RM_TILES",
           "list": "vram",
-          "size": 15360
+          "file": "BOWESC.BIN",
+          "size": 15360,
+          "kind": "RM_TILES"
         }
-      ],
-      "time": "2026-11-13T15:58:34-06:00",
-      "tool": "pixel"
+      ]
     },
     "bowubt": {
-      "doc": "assets/pictures/bowubt.x16pic.json",
+      "tool": "pixel",
       "format": "x16.picture",
+      "doc": "assets/pictures/bowubt.x16pic.json",
+      "time": "2026-11-13T15:58:35-06:00",
       "outputs": [
         {
-          "bytes": 15360,
-          "file": "boot/BOWUBT.BIN"
+          "file": "boot/BOWUBT.BIN",
+          "bytes": 15360
         }
       ],
       "resmap": [
         {
-          "file": "BOWUBT.BIN",
-          "kind": "RM_TILES",
           "list": "vram",
-          "size": 15360
+          "file": "BOWUBT.BIN",
+          "size": 15360,
+          "kind": "RM_TILES"
         }
-      ],
-      "time": "2026-11-13T15:58:35-06:00",
-      "tool": "pixel"
+      ]
     },
     "credits": {
-      "doc": "assets/pictures/credits.x16pic.json",
+      "tool": "pixel",
       "format": "x16.picture",
+      "doc": "assets/pictures/credits.x16pic.json",
+      "time": "2026-11-13T15:58:35-06:00",
       "outputs": [
         {
-          "bytes": 76800,
-          "file": "boot/CREDITS.BIN"
+          "file": "boot/CREDITS.BIN",
+          "bytes": 76800
         }
       ],
       "resmap": [
         {
-          "file": "CREDITS.BIN",
-          "kind": "RM_BITMAP",
           "list": "vram",
-          "size": 76800
+          "file": "CREDITS.BIN",
+          "size": 76800,
+          "kind": "RM_BITMAP"
         }
-      ],
-      "time": "2026-11-13T15:58:35-06:00",
-      "tool": "pixel"
+      ]
     },
     "game": {
-      "doc": "assets/sprites/game.x16spr.json",
+      "tool": "pixel",
       "format": "x16.sprites",
+      "doc": "assets/sprites/game.x16spr.json",
+      "time": "2026-11-14T16:56:56-06:00",
       "outputs": [
         {
-          "bytes": 256,
-          "file": "boot/CHARGE.BIN"
+          "file": "boot/CHARGE.BIN",
+          "bytes": 256
         },
         {
-          "bytes": 2048,
-          "file": "boot/CROSS.BIN"
+          "file": "boot/CROSS.BIN",
+          "bytes": 2048
         },
         {
-          "bytes": 32768,
-          "file": "boot/ESCORT.BIN"
+          "file": "boot/ESCORT.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 4224,
-          "file": "boot/GAUGES.BIN"
+          "file": "boot/GAUGES.BIN",
+          "bytes": 4224
         },
         {
-          "bytes": 256,
-          "file": "boot/MARKS.BIN"
+          "file": "boot/MARKS.BIN",
+          "bytes": 256
         },
         {
-          "bytes": 32768,
-          "file": "boot/MERCHANT.BIN"
+          "file": "boot/MERCHANT.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 32768,
-          "file": "boot/MID.BIN"
+          "file": "boot/MID.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 640,
-          "file": "boot/NUMBERS.BIN"
+          "file": "boot/NUMBERS.BIN",
+          "bytes": 640
         },
         {
-          "bytes": 8192,
-          "file": "boot/P16PROF.BIN"
+          "file": "boot/P16PROF.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 8192,
-          "file": "boot/P32ESC.BIN"
+          "file": "boot/P32ESC.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 8192,
-          "file": "boot/P32MER.BIN"
+          "file": "boot/P32MER.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 8192,
-          "file": "boot/P32TNK.BIN"
+          "file": "boot/P32TNK.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 8192,
-          "file": "boot/P32UBT.BIN"
+          "file": "boot/P32UBT.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 2048,
-          "file": "boot/P8PROF.BIN"
+          "file": "boot/P8PROF.BIN",
+          "bytes": 2048
         },
         {
-          "bytes": 32768,
-          "file": "boot/PROFESC.BIN"
+          "file": "boot/PROFESC.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 32768,
-          "file": "boot/PROFMER.BIN"
+          "file": "boot/PROFMER.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 32768,
-          "file": "boot/PROFTNK.BIN"
+          "file": "boot/PROFTNK.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 32768,
-          "file": "boot/PROFUBT.BIN"
+          "file": "boot/PROFUBT.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 4160,
-          "file": "boot/SCOPE.BIN"
+          "file": "boot/SCOPE.BIN",
+          "bytes": 4160
         },
         {
-          "bytes": 32768,
-          "file": "boot/TANKER.BIN"
+          "file": "boot/TANKER.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 8192,
-          "file": "boot/TINY.BIN"
+          "file": "boot/TINY.BIN",
+          "bytes": 8192
         },
         {
-          "bytes": 32768,
-          "file": "boot/UBOAT.BIN"
+          "file": "boot/UBOAT.BIN",
+          "bytes": 32768
         },
         {
-          "bytes": 4608,
-          "file": "boot/WEAPONS.BIN"
+          "file": "boot/WEAPONS.BIN",
+          "bytes": 4608
         },
         {
-          "bytes": 2048,
-          "file": "boot/ZOOM.BIN"
+          "file": "boot/ZOOM.BIN",
+          "bytes": 2048
         }
       ],
       "resmap": [
         {
+          "list": "vram",
           "file": "CHARGE.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 256
+          "size": 256,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "CROSS.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 2048
+          "size": 2048,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "ESCORT.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "GAUGES.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 4224
+          "size": 4224,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "MARKS.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 256
+          "size": 256,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "MERCHANT.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "MID.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "NUMBERS.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 640
+          "size": 640,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P16PROF.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P32ESC.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P32MER.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P32TNK.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P32UBT.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "P8PROF.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 2048
+          "size": 2048,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "PROFESC.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "PROFMER.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "PROFTNK.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "PROFUBT.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "SCOPE.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 4160
+          "size": 4160,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "TANKER.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "TINY.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 8192
+          "size": 8192,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "UBOAT.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 32768
+          "size": 32768,
+          "kind": "RM_SPRITE"
         },
         {
+          "list": "vram",
           "file": "WEAPONS.BIN",
-          "kind": "RM_SPRITE",
-          "list": "vram",
-          "size": 4608
+          "size": 4608,
+          "kind": "RM_SPRITE"
         },
         {
-          "file": "ZOOM.BIN",
-          "kind": "RM_SPRITE",
           "list": "vram",
-          "size": 2048
+          "file": "ZOOM.BIN",
+          "size": 2048,
+          "kind": "RM_SPRITE"
         }
-      ],
-      "time": "2026-11-13T19:20:51-06:00",
-      "tool": "pixel"
+      ]
     },
     "main": {
-      "doc": "assets/palettes/main.x16pal.json",
+      "tool": "pixel",
       "format": "x16.palette",
+      "doc": "assets/palettes/main.x16pal.json",
+      "time": "2026-11-13T08:36:06-06:00",
       "outputs": [
         {
-          "bytes": 64,
-          "file": "boot/PAL.BIN"
+          "file": "boot/PAL.BIN",
+          "bytes": 64
         }
       ],
       "resmap": [
         {
-          "file": "PAL.BIN",
           "list": "palette",
+          "file": "PAL.BIN",
           "row": 0,
           "rows": 2
         }
-      ],
-      "time": "2026-11-13T08:36:06-06:00",
-      "tool": "pixel"
+      ]
     },
     "sea": {
-      "doc": "assets/tiles/sea.x16tile.json",
+      "tool": "pixel",
       "format": "x16.tiles",
+      "doc": "assets/tiles/sea.x16tile.json",
+      "time": "2026-11-13T08:36:06-06:00",
       "outputs": [
         {
-          "bytes": 768,
-          "file": "boot/TILES.BIN"
+          "file": "boot/TILES.BIN",
+          "bytes": 768
         }
       ],
       "resmap": [
         {
-          "file": "TILES.BIN",
-          "kind": "RM_TILES",
           "list": "vram",
-          "size": 768
+          "file": "TILES.BIN",
+          "size": 768,
+          "kind": "RM_TILES"
         }
-      ],
-      "time": "2026-11-13T08:36:06-06:00",
-      "tool": "pixel"
+      ]
     },
     "sfx": {
       "tool": "sound",
@@ -369,25 +370,24 @@
       "resmap": []
     },
     "title": {
-      "doc": "assets/pictures/title.x16pic.json",
+      "tool": "pixel",
       "format": "x16.picture",
+      "doc": "assets/pictures/title.x16pic.json",
+      "time": "2026-11-13T15:58:35-06:00",
       "outputs": [
         {
-          "bytes": 76800,
-          "file": "boot/TITLE.BIN"
+          "file": "boot/TITLE.BIN",
+          "bytes": 76800
         }
       ],
       "resmap": [
         {
-          "file": "TITLE.BIN",
-          "kind": "RM_BITMAP",
           "list": "vram",
-          "size": 76800
+          "file": "TITLE.BIN",
+          "size": 76800,
+          "kind": "RM_BITMAP"
         }
-      ],
-      "time": "2026-11-13T15:58:35-06:00",
-      "tool": "pixel"
+      ]
     }
-  },
-  "schema": 1
+  }
 }
