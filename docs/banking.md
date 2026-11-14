@@ -4,7 +4,7 @@ This is the current map. It describes what the program does today. The design no
 
 Related: [mechanics.md](mechanics.md) (what the sim and the views actually do).
 
-Numbers below are from the current `build/CONVOY.map` and `build/CONVOY.PRG` (35,587 bytes). Rebuild and read the map again before treating a byte count as still true.
+Numbers below are from the current `build/CONVOY.map` and `build/CONVOY.PRG` (35,791 bytes). Rebuild and read the map again before treating a byte count as still true.
 
 ## Why the build says it is out of memory
 
@@ -14,12 +14,12 @@ The 65C02 can see 64 KB. This program is one resident image:
 
 | Segment | Address | Size |
 |---|---|---|
-| CODE | `$082E`–`$8CE4` | 33,975 bytes |
-| RODATA | `$8CE5`–`$9293` | 1,455 bytes |
-| DATA | `$9294`–`$92D8` | 69 bytes |
-| BSS | `$92DB`–`$9A61` | 1,927 bytes |
+| CODE | `$082E`–`$8DB0` | 34,179 bytes |
+| RODATA | `$8DB1`–`$935F` | 1,455 bytes |
+| DATA | `$9360`–`$93A4` | 69 bytes |
+| BSS | `$93A7`–`$9B3A` | 1,940 bytes |
 | C stack | `$9D00`–`$9EFF` | 512 bytes (`__STACKSIZE__=0x0200`) |
-| Free before the stack | `$9A62`–`$9CFF` | **670 bytes** |
+| Free before the stack | `$9B3B`–`$9CFF` | **453 bytes** |
 | PHASECODE | `$A000`–`$A51A` | 1,307 bytes, bank 63, file `PHASE.BIN` |
 
 BSS is the globals. It is not stored in the PRG; the loader clears it. The linker still places it immediately after the code. Every new function, string, or library call slides BSS up. When BSS would pass `$9CFF`, the link fails with `Segment 'BSS' overflows memory area 'BSS'`. That is the message we keep hitting.
@@ -65,7 +65,7 @@ There is no wake sprite. The chart, the bridge, and the glasses do not drop foam
 
 ## Rules that follow from this
 
-1. A new feature that adds code or a global in main RAM spends the 670 bytes. Prefer cutting or moving something in the same change. The title card, the credits card, the match loader, and the title menu text already live in bank 63.
+1. A new feature that adds code or a global in main RAM spends the 453 bytes. Prefer cutting or moving something in the same change. The title card, the credits card, the match loader, and the title menu text already live in bank 63.
 2. Art and big tables belong in a RAM bank or in VRAM, loaded with `file_load` / `file_load_to_banks`. The profile sheets and the overhead hulls already work this way. One 64×64 frame is copied into a hull slot when it is shown.
 3. Code that runs every frame (`draw_map`, `draw_ahead`, the hub, the scopes) stays in main RAM so a view change does not switch banks in the draw. `phase_call` in `src/phasecall.s` is the trampoline for bank 63. It switches to that bank, calls `phase_run`, and switches back. Do not call it from the frame loop.
 4. Do not put a second copy of a table in main RAM "for convenience" if the bytes already live in a bank.
@@ -156,10 +156,10 @@ The bow map and the bow tiles meet at `$14000` with no spare between them. Do no
 ## What is not short
 
 - Banked RAM in banks 51–62, and the unused wake banks 17–20, 25, and 27.
-- The PRG file cap (35,587 of 36,864).
+- The PRG file cap (35,791 of 36,864).
 - The sim's ship array.
 
-What is short is the 670 bytes between the last global and the stack. The draw code and the sprite cache both live in the 64 KB the CPU can see without a bank switch. The view art does not: it is in the banks before the first frame.
+What is short is the 453 bytes between the last global and the stack. The draw code and the sprite cache both live in the 64 KB the CPU can see without a bank switch. The view art does not: it is in the banks before the first frame.
 
 <!-- resmap:begin -->
 

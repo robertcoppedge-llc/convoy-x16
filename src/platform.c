@@ -120,6 +120,7 @@ static ConvCfg cfg = { CONFIG_HDR(1, ConvCfg), 1, 1 };
 #define OP_CREDITS 2
 #define OP_GAME 3
 #define OP_UI 4
+#define OP_SMOKE 5
 #define UI_LOAD 1
 #define UI_TITLE 2
 #define UI_OPTS 3
@@ -1536,6 +1537,73 @@ static void show_card(const char *name)
     hide_sprites();
 }
 
+#if CONVOY_SMOKE
+static void smoke_puts(const char *m)
+{
+    for (; *m; ++m)
+        cbm_k_chrout((unsigned char)*m);
+}
+
+static void smoke_body(void)
+{
+    int y0 = ships[0].y;
+    int my = ships[4].y;
+    int uy = ships[N_SHIP - 1].y;
+    unsigned char i, n;
+    unsigned char moved, hold, drift, fired, attack;
+    int sea;
+    game_telegraph_delta(2);
+    for (i = 0; i < 40; i++) {
+        game_helm(HELM_MID);
+        game_tick();
+    }
+    moved = (unsigned char)(ships[0].y < y0);
+    hold = (unsigned char)(ships[4].y == my);
+    drift = (unsigned char)(ships[N_SHIP - 1].y > uy);
+    sea = scroll_y;
+
+    /* Same opponents the title uses, so a scripted run has to see a fish
+     * leave the tubes and an escort go to attack. */
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[4].x + 20 * FP;
+    ships[N_SHIP - 1].y = ships[4].y + 80 * FP;
+    game_set_player(ROLE_ESCORT);
+    for (i = 0; i < 160; i++) {
+        game_ai_uboat();
+        game_tick();
+    }
+    fired = (unsigned char)(game_tubes() < 4);
+
+    game_init(BOAT_VIIC);
+    ships[N_SHIP - 1].x = ships[0].x;
+    ships[N_SHIP - 1].y = ships[0].y - 70 * FP;
+    game_set_player(ROLE_UBOAT);
+    attack = 0;
+    for (i = 0; i < 80; i++) {
+        game_ai_escort();
+        game_tick();
+        for (n = 0; n < N_ESCORT; n++)
+            if (game_order_of(n) == ORD_ATTACK) attack = 1;
+    }
+
+    smoke_puts("convoy smoke load=");
+    cbm_k_chrout((unsigned char)('0' + (gfx_ok ? 1 : 0)));
+    smoke_puts(" moved=");
+    cbm_k_chrout((unsigned char)('0' + moved));
+    smoke_puts(" hold=");
+    cbm_k_chrout((unsigned char)('0' + hold));
+    smoke_puts(" drift=");
+    cbm_k_chrout((unsigned char)('0' + drift));
+    smoke_puts(" fired=");
+    cbm_k_chrout((unsigned char)('0' + fired));
+    smoke_puts(" attack=");
+    cbm_k_chrout((unsigned char)('0' + attack));
+    cbm_k_chrout(13);
+    if (gfx_ok && moved && hold && drift && sea == -40 && fired && attack)
+        smoke_puts("convoy smoke ok\r");
+}
+#endif
+
 void phase_run(void)
 {
     switch (phase_op) {
@@ -1593,6 +1661,11 @@ void phase_run(void)
             (!vram_keep("cross.bin", VRAM_CROSS) || !vram_keep("gauges.bin", VRAM_GAUGE)))
             gfx_ok = 0;
         break;
+#if CONVOY_SMOKE
+    case OP_SMOKE:
+        smoke_body();
+        break;
+#endif
     default:
         break;
     }
@@ -1602,68 +1675,9 @@ void phase_run(void)
 #pragma code-name(pop)
 
 #if CONVOY_SMOKE
-static void smoke_puts(const char *m)
-{
-    for (; *m; ++m)
-        cbm_k_chrout((unsigned char)*m);
-}
-
 void plat_smoke(void)
 {
-    int y0 = ships[0].y;
-    int my = ships[4].y;
-    int uy = ships[N_SHIP - 1].y;
-    unsigned char i, n;
-    unsigned char moved, hold, drift, fired, attack;
-    int sea;
-    game_telegraph_delta(2);
-    for (i = 0; i < 40; i++) {
-        game_helm(HELM_MID);
-        game_tick();
-    }
-    moved = (unsigned char)(ships[0].y < y0);
-    hold = (unsigned char)(ships[4].y == my);
-    drift = (unsigned char)(ships[N_SHIP - 1].y > uy);
-    sea = scroll_y;
-
-    /* Same opponents the title uses, so a scripted run has to see a fish
-     * leave the tubes and an escort go to attack. */
-    game_init(BOAT_VIIC);
-    ships[N_SHIP - 1].x = ships[4].x + 20 * FP;
-    ships[N_SHIP - 1].y = ships[4].y + 80 * FP;
-    game_set_player(ROLE_ESCORT);
-    for (i = 0; i < 160; i++) {
-        game_ai_uboat();
-        game_tick();
-    }
-    fired = (unsigned char)(game_tubes() < 4);
-
-    game_init(BOAT_VIIC);
-    ships[N_SHIP - 1].x = ships[0].x;
-    ships[N_SHIP - 1].y = ships[0].y - 70 * FP;
-    game_set_player(ROLE_UBOAT);
-    attack = 0;
-    for (i = 0; i < 80; i++) {
-        game_ai_escort();
-        game_tick();
-        for (n = 0; n < N_ESCORT; n++)
-            if (game_order_of(n) == ORD_ATTACK) attack = 1;
-    }
-
-    smoke_puts("convoy smoke load=");
-    cbm_k_chrout((unsigned char)('0' + (gfx_ok ? 1 : 0)));
-    smoke_puts(" moved=");
-    cbm_k_chrout((unsigned char)('0' + moved));
-    smoke_puts(" hold=");
-    cbm_k_chrout((unsigned char)('0' + hold));
-    smoke_puts(" drift=");
-    cbm_k_chrout((unsigned char)('0' + drift));
-    smoke_puts(" fired=");
-    cbm_k_chrout((unsigned char)('0' + fired));
-    smoke_puts(" attack=");
-    cbm_k_chrout((unsigned char)('0' + attack));
-    cbm_k_chrout(13);
-    if (gfx_ok && moved && hold && drift && sea == -40 && fired && attack)
-        smoke_puts("convoy smoke ok\r");
+    phase_op = OP_SMOKE;
+    phase_enter();
 }
 #endif

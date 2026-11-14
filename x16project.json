@@ -14,138 +14,6 @@
     "sound",
     "text"
   ],
-  "balance": {
-    "note": "Convoy fight. Torpedo speed and run compile today. Gray rows are the hulls and the other weapons: any eel still sinks any ship, and the boat still dies at 3 shared hits.",
-    "header": "src/balance.h",
-    "groups": [
-      { "id": "hulls", "name": "Hulls" },
-      { "id": "boats", "name": "U-boats" },
-      { "id": "weapons", "name": "Weapons" }
-    ],
-    "units": [
-      {
-        "id": "escort",
-        "group": "hulls",
-        "name": "Escort",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "ESCORT_HITS", "value": 1, "min": 1, "max": 12, "detail": "An eel sinks an escort in one hit today.", "pending": true }
-        ]
-      },
-      {
-        "id": "liberty",
-        "group": "hulls",
-        "name": "Liberty",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "LIBERTY_HITS", "value": 1, "min": 1, "max": 12, "detail": "An eel sinks a Liberty in one hit today.", "pending": true },
-          { "id": "tons", "label": "Tonnage", "symbol": "LIBERTY_TONS", "value": 1, "min": 1, "max": 8, "detail": "Points toward a U-boat win. Four points wins.", "pending": true }
-        ]
-      },
-      {
-        "id": "tanker",
-        "group": "hulls",
-        "name": "Tanker",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "TANKER_HITS", "value": 1, "min": 1, "max": 12, "detail": "An eel sinks a tanker in one hit today. Tonnage is the only difference.", "pending": true },
-          { "id": "tons", "label": "Tonnage", "symbol": "TANKER_TONS", "value": 2, "min": 1, "max": 8, "detail": "Points toward a U-boat win.", "pending": true }
-        ]
-      },
-      {
-        "id": "ii",
-        "group": "boats",
-        "name": "Type II",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "BOAT_II_HITS", "value": 3, "min": 1, "max": 12, "detail": "Every boat dies at 3 hits today, gun and depth charge shared.", "pending": true },
-          { "id": "surf", "label": "Surface knots", "symbol": "BOAT_II_SURF", "value": 13, "min": 1, "max": 30, "detail": "Shown on the hub. The plot still uses the telegraph.", "pending": true },
-          { "id": "sub", "label": "Submerged knots", "symbol": "BOAT_II_SUB", "value": 7, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "bow", "label": "Bow tubes", "symbol": "BOAT_II_BOW", "value": 3, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "stern", "label": "Stern tubes", "symbol": "BOAT_II_STERN", "value": 0, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "gun", "label": "Deck gun", "symbol": "BOAT_II_GUN", "value": 0, "min": 0, "max": 1, "detail": "0 none, 1 fitted.", "pending": true }
-        ]
-      },
-      {
-        "id": "viic",
-        "group": "boats",
-        "name": "Type VIIC",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "BOAT_VIIC_HITS", "value": 3, "min": 1, "max": 12, "detail": "Every boat dies at 3 hits today.", "pending": true },
-          { "id": "surf", "label": "Surface knots", "symbol": "BOAT_VIIC_SURF", "value": 17, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "sub", "label": "Submerged knots", "symbol": "BOAT_VIIC_SUB", "value": 7, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "bow", "label": "Bow tubes", "symbol": "BOAT_VIIC_BOW", "value": 4, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "stern", "label": "Stern tubes", "symbol": "BOAT_VIIC_STERN", "value": 1, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "gun", "label": "Deck gun", "symbol": "BOAT_VIIC_GUN", "value": 1, "min": 0, "max": 1, "detail": "88 mm fitted.", "pending": true }
-        ]
-      },
-      {
-        "id": "ixc",
-        "group": "boats",
-        "name": "Type IXC",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "BOAT_IXC_HITS", "value": 3, "min": 1, "max": 12, "detail": "Every boat dies at 3 hits today.", "pending": true },
-          { "id": "surf", "label": "Surface knots", "symbol": "BOAT_IXC_SURF", "value": 18, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "sub", "label": "Submerged knots", "symbol": "BOAT_IXC_SUB", "value": 7, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "bow", "label": "Bow tubes", "symbol": "BOAT_IXC_BOW", "value": 4, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "stern", "label": "Stern tubes", "symbol": "BOAT_IXC_STERN", "value": 2, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "gun", "label": "Deck gun", "symbol": "BOAT_IXC_GUN", "value": 1, "min": 0, "max": 1, "detail": "105 mm fitted.", "pending": true }
-        ]
-      },
-      {
-        "id": "xxi",
-        "group": "boats",
-        "name": "Type XXI",
-        "fields": [
-          { "id": "hits", "label": "Hits to sink", "symbol": "BOAT_XXI_HITS", "value": 3, "min": 1, "max": 12, "detail": "Every boat dies at 3 hits today.", "pending": true },
-          { "id": "surf", "label": "Surface knots", "symbol": "BOAT_XXI_SURF", "value": 15, "min": 1, "max": 30, "detail": "Shown on the hub.", "pending": true },
-          { "id": "sub", "label": "Submerged knots", "symbol": "BOAT_XXI_SUB", "value": 17, "min": 1, "max": 30, "detail": "Sprint under, shown on the hub.", "pending": true },
-          { "id": "bow", "label": "Bow tubes", "symbol": "BOAT_XXI_BOW", "value": 6, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "stern", "label": "Stern tubes", "symbol": "BOAT_XXI_STERN", "value": 0, "min": 0, "max": 8, "detail": "Tube count in the type table.", "pending": true },
-          { "id": "gun", "label": "Deck gun", "symbol": "BOAT_XXI_GUN", "value": 0, "min": 0, "max": 1, "detail": "No gun.", "pending": true }
-        ]
-      },
-      {
-        "id": "eel",
-        "group": "weapons",
-        "name": "Torpedo",
-        "fields": [
-          { "id": "speed", "label": "Speed", "symbol": "TORP_SPEED", "value": 6, "min": 1, "max": 16, "detail": "Telegraph steps. 6 is the original run." },
-          { "id": "life", "label": "Run", "symbol": "TORP_LIFE", "value": 80, "min": 10, "max": 200, "detail": "Frames before the torpedo dies." },
-          { "id": "hit", "label": "Hit radius", "symbol": "TORP_HIT", "value": 12, "min": 4, "max": 40, "detail": "Pixels. A touch sinks the ship today.", "pending": true },
-          { "id": "dmg", "label": "Damage", "symbol": "TORP_DMG", "value": 1, "min": 1, "max": 12, "detail": "Hits applied to the hull it touches.", "pending": true }
-        ]
-      },
-      {
-        "id": "escort-gun",
-        "group": "weapons",
-        "name": "Escort deck gun",
-        "fields": [
-          { "id": "flight", "label": "Flight", "symbol": "ESCORT_GUN_FLIGHT", "value": 32, "min": 8, "max": 80, "detail": "Frames the shell flies.", "pending": true },
-          { "id": "speed", "label": "Speed", "symbol": "ESCORT_GUN_SPEED", "value": 96, "min": 16, "max": 200, "detail": "Same units as a ship's per-tick step.", "pending": true },
-          { "id": "hit", "label": "Hit radius", "symbol": "ESCORT_GUN_HIT", "value": 14, "min": 4, "max": 40, "detail": "Pixels. Only a boat shallower than depth 8.", "pending": true },
-          { "id": "dmg", "label": "Damage", "symbol": "ESCORT_GUN_DMG", "value": 1, "min": 1, "max": 12, "detail": "Hits on the boat.", "pending": true },
-          { "id": "cool", "label": "Reload", "symbol": "ESCORT_GUN_COOL", "value": 20, "min": 1, "max": 60, "detail": "Frames before another shell.", "pending": true }
-        ]
-      },
-      {
-        "id": "boat-gun",
-        "group": "weapons",
-        "name": "U-boat deck gun",
-        "fields": [
-          { "id": "dmg", "label": "Damage", "symbol": "BOAT_GUN_DMG", "value": 1, "min": 1, "max": 12, "detail": "VIIC and IXC only. The gun does not fire yet.", "pending": true },
-          { "id": "hit", "label": "Hit radius", "symbol": "BOAT_GUN_HIT", "value": 14, "min": 4, "max": 40, "detail": "Pixels.", "pending": true }
-        ]
-      },
-      {
-        "id": "dc",
-        "group": "weapons",
-        "name": "Depth charge",
-        "fields": [
-          { "id": "fuse", "label": "Fuse", "symbol": "DC_FUSE", "value": 28, "min": 8, "max": 80, "detail": "Frames until the blast.", "pending": true },
-          { "id": "blast", "label": "Blast", "symbol": "DC_BLAST", "value": 16, "min": 4, "max": 48, "detail": "Pixels.", "pending": true },
-          { "id": "dmg", "label": "Damage", "symbol": "DC_DMG", "value": 1, "min": 1, "max": 12, "detail": "Hits on the boat. Shares the gun's hit counter today.", "pending": true },
-          { "id": "cool", "label": "Reload", "symbol": "DC_COOL", "value": 28, "min": 1, "max": 60, "detail": "Frames before another charge.", "pending": true }
-        ]
-      }
-    ]
-  },
   "targets": [
     {
       "id": "CONVOY",
@@ -226,8 +94,16 @@
     "file": "convoy.cfg",
     "version": 1,
     "fields": [
-      { "name": "music", "type": "u8", "default": 1 },
-      { "name": "sfx", "type": "u8", "default": 1 }
+      {
+        "name": "music",
+        "type": "u8",
+        "default": 1
+      },
+      {
+        "name": "sfx",
+        "type": "u8",
+        "default": 1
+      }
     ]
   },
   "budgets": {
@@ -280,8 +156,10 @@
         "placement": {
           "target": "vram",
           "addr": "0x00000",
-          "phases": ["play"],
-          "loader": "file_load (FILE_TO_VRAM). Play only. The title and credits cards use this address in other phases."
+          "loader": "file_load (FILE_TO_VRAM). Play only. The title and credits cards use this address in other phases.",
+          "phases": [
+            "play"
+          ]
         },
         "resmap": [
           {
@@ -313,8 +191,8 @@
         "placement": {
           "target": "vram",
           "addr": "0x14000",
-          "share": "bow",
-          "loader": "file_load, then tools/pack_bows.py. Pixel writes 15360 bytes; the pack step adds a blank tile, a sky tile, and a horizon tile, so the file on disk is 15456. The same step writes boot/BOWMAP.BIN (16384), which is not a Pixel export. One bow at a time, shared with bowubt. Map at $10000."
+          "loader": "file_load, then tools/pack_bows.py. Pixel writes 15360 bytes; the pack step adds a blank tile, a sky tile, and a horizon tile, so the file on disk is 15456. The same step writes boot/BOWMAP.BIN (16384), which is not a Pixel export. One bow at a time, shared with bowubt. Map at $10000.",
+          "share": "bow"
         },
         "resmap": [
           {
@@ -340,8 +218,8 @@
         "placement": {
           "target": "vram",
           "addr": "0x14000",
-          "share": "bow",
-          "loader": "file_load over the escort bow when the player is the boat, then the same pack_bows.py step. Pixel writes 15360 bytes; the packed file is 15456."
+          "loader": "file_load over the escort bow when the player is the boat, then the same pack_bows.py step. Pixel writes 15360 bytes; the packed file is 15456.",
+          "share": "bow"
         },
         "resmap": [
           {
@@ -367,8 +245,10 @@
         "placement": {
           "target": "vram",
           "addr": "0x00000",
-          "phases": ["title"],
-          "loader": "file_load. Layer 0 bitmap, title phase only. 2bpp because a 4bpp 640x480 picture does not fit VERA."
+          "loader": "file_load. Layer 0 bitmap, title phase only. 2bpp because a 4bpp 640x480 picture does not fit VERA.",
+          "phases": [
+            "title"
+          ]
         },
         "resmap": [
           {
@@ -394,8 +274,10 @@
         "placement": {
           "target": "vram",
           "addr": "0x00000",
-          "phases": ["credits"],
-          "loader": "file_load over the title card. Credits phase only."
+          "loader": "file_load over the title card. Credits phase only.",
+          "phases": [
+            "credits"
+          ]
         },
         "resmap": [
           {
@@ -568,6 +450,42 @@
           },
           {
             "list": "vram",
+            "file": "P16PROF.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "P32ESC.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "P32MER.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "P32TNK.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "P32UBT.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "P8PROF.BIN",
+            "size": 2048,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
             "file": "PROFESC.BIN",
             "size": 32768,
             "kind": "RM_SPRITE"
@@ -654,5 +572,500 @@
       }
     ]
   },
-  "notes": "One sprite document, assets/sprites/game.x16spr.json, holds every in-game sprite: chart hulls, bridge profiles, zoom steps, scopes, gauges, weapons, and marks. Pictures in this same project are the escort bow, the U-boat bow, the title card, and the credits card (assets/pictures). Sea tiles are assets/tiles/sea.x16tile.json. Palette is assets/palettes/main.x16pal.json. The plan is docs/game-plan.md."
+  "notes": "One sprite document, assets/sprites/game.x16spr.json, holds every in-game sprite: chart hulls, bridge profiles, zoom steps, scopes, gauges, weapons, and marks. Pictures in this same project are the escort bow, the U-boat bow, the title card, and the credits card (assets/pictures). Sea tiles are assets/tiles/sea.x16tile.json. Palette is assets/palettes/main.x16pal.json. The plan is docs/game-plan.md.",
+  "balance": {
+    "note": "Convoy fight. Hulls, tubes, knots, torpedo, escort gun, and depth charge compile. The U-boat deck gun stays gray until it fires. A ram is one hit and is not a field. Defaults still sink a ship in one torpedo hit and the boat at 3.",
+    "header": "src/balance.h",
+    "groups": [
+      {
+        "id": "hulls",
+        "name": "Hulls"
+      },
+      {
+        "id": "boats",
+        "name": "U-boats"
+      },
+      {
+        "id": "weapons",
+        "name": "Weapons"
+      }
+    ],
+    "units": [
+      {
+        "id": "escort",
+        "name": "Escort",
+        "group": "hulls",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "ESCORT_HITS",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "An eel sinks an escort in one hit today."
+          }
+        ]
+      },
+      {
+        "id": "liberty",
+        "name": "Liberty",
+        "group": "hulls",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "LIBERTY_HITS",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "An eel sinks a Liberty in one hit today."
+          },
+          {
+            "id": "tons",
+            "label": "Tonnage",
+            "symbol": "LIBERTY_TONS",
+            "value": 1,
+            "min": 1,
+            "max": 8,
+            "detail": "Points toward a U-boat win. Four points wins."
+          }
+        ]
+      },
+      {
+        "id": "tanker",
+        "name": "Tanker",
+        "group": "hulls",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "TANKER_HITS",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "An eel sinks a tanker in one hit today. Tonnage is the only difference."
+          },
+          {
+            "id": "tons",
+            "label": "Tonnage",
+            "symbol": "TANKER_TONS",
+            "value": 2,
+            "min": 1,
+            "max": 8,
+            "detail": "Points toward a U-boat win."
+          }
+        ]
+      },
+      {
+        "id": "ii",
+        "name": "Type II",
+        "group": "boats",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "BOAT_II_HITS",
+            "value": 3,
+            "min": 1,
+            "max": 12,
+            "detail": "Every boat dies at 3 hits today, gun and depth charge shared."
+          },
+          {
+            "id": "surf",
+            "label": "Surface knots",
+            "symbol": "BOAT_II_SURF",
+            "value": 13,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub. The plot still uses the telegraph."
+          },
+          {
+            "id": "sub",
+            "label": "Submerged knots",
+            "symbol": "BOAT_II_SUB",
+            "value": 7,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "bow",
+            "label": "Bow tubes",
+            "symbol": "BOAT_II_BOW",
+            "value": 3,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "stern",
+            "label": "Stern tubes",
+            "symbol": "BOAT_II_STERN",
+            "value": 0,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "gun",
+            "label": "Deck gun",
+            "symbol": "BOAT_II_GUN",
+            "value": 0,
+            "min": 0,
+            "max": 1,
+            "detail": "0 none, 1 fitted."
+          }
+        ]
+      },
+      {
+        "id": "viic",
+        "name": "Type VIIC",
+        "group": "boats",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "BOAT_VIIC_HITS",
+            "value": 3,
+            "min": 1,
+            "max": 12,
+            "detail": "Every boat dies at 3 hits today."
+          },
+          {
+            "id": "surf",
+            "label": "Surface knots",
+            "symbol": "BOAT_VIIC_SURF",
+            "value": 17,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "sub",
+            "label": "Submerged knots",
+            "symbol": "BOAT_VIIC_SUB",
+            "value": 7,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "bow",
+            "label": "Bow tubes",
+            "symbol": "BOAT_VIIC_BOW",
+            "value": 4,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "stern",
+            "label": "Stern tubes",
+            "symbol": "BOAT_VIIC_STERN",
+            "value": 1,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "gun",
+            "label": "Deck gun",
+            "symbol": "BOAT_VIIC_GUN",
+            "value": 1,
+            "min": 0,
+            "max": 1,
+            "detail": "88 mm fitted."
+          }
+        ]
+      },
+      {
+        "id": "ixc",
+        "name": "Type IXC",
+        "group": "boats",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "BOAT_IXC_HITS",
+            "value": 3,
+            "min": 1,
+            "max": 12,
+            "detail": "Every boat dies at 3 hits today."
+          },
+          {
+            "id": "surf",
+            "label": "Surface knots",
+            "symbol": "BOAT_IXC_SURF",
+            "value": 18,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "sub",
+            "label": "Submerged knots",
+            "symbol": "BOAT_IXC_SUB",
+            "value": 7,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "bow",
+            "label": "Bow tubes",
+            "symbol": "BOAT_IXC_BOW",
+            "value": 4,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "stern",
+            "label": "Stern tubes",
+            "symbol": "BOAT_IXC_STERN",
+            "value": 2,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "gun",
+            "label": "Deck gun",
+            "symbol": "BOAT_IXC_GUN",
+            "value": 1,
+            "min": 0,
+            "max": 1,
+            "detail": "105 mm fitted."
+          }
+        ]
+      },
+      {
+        "id": "xxi",
+        "name": "Type XXI",
+        "group": "boats",
+        "fields": [
+          {
+            "id": "hits",
+            "label": "Hits to sink",
+            "symbol": "BOAT_XXI_HITS",
+            "value": 3,
+            "min": 1,
+            "max": 12,
+            "detail": "Every boat dies at 3 hits today."
+          },
+          {
+            "id": "surf",
+            "label": "Surface knots",
+            "symbol": "BOAT_XXI_SURF",
+            "value": 15,
+            "min": 1,
+            "max": 30,
+            "detail": "Shown on the hub."
+          },
+          {
+            "id": "sub",
+            "label": "Submerged knots",
+            "symbol": "BOAT_XXI_SUB",
+            "value": 17,
+            "min": 1,
+            "max": 30,
+            "detail": "Sprint under, shown on the hub."
+          },
+          {
+            "id": "bow",
+            "label": "Bow tubes",
+            "symbol": "BOAT_XXI_BOW",
+            "value": 6,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "stern",
+            "label": "Stern tubes",
+            "symbol": "BOAT_XXI_STERN",
+            "value": 0,
+            "min": 0,
+            "max": 8,
+            "detail": "Tube count in the type table."
+          },
+          {
+            "id": "gun",
+            "label": "Deck gun",
+            "symbol": "BOAT_XXI_GUN",
+            "value": 0,
+            "min": 0,
+            "max": 1,
+            "detail": "No gun."
+          }
+        ]
+      },
+      {
+        "id": "eel",
+        "name": "Torpedo",
+        "group": "weapons",
+        "fields": [
+          {
+            "id": "speed",
+            "label": "Speed",
+            "symbol": "TORP_SPEED",
+            "value": 6,
+            "min": 1,
+            "max": 16,
+            "detail": "Telegraph steps. 6 is the original run."
+          },
+          {
+            "id": "life",
+            "label": "Run",
+            "symbol": "TORP_LIFE",
+            "value": 80,
+            "min": 10,
+            "max": 200,
+            "detail": "Frames before the torpedo dies."
+          },
+          {
+            "id": "hit",
+            "label": "Hit radius",
+            "symbol": "TORP_HIT",
+            "value": 12,
+            "min": 4,
+            "max": 40,
+            "detail": "Pixels. A touch sinks the ship today."
+          },
+          {
+            "id": "dmg",
+            "label": "Damage",
+            "symbol": "TORP_DMG",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "Hits applied to the hull it touches."
+          }
+        ]
+      },
+      {
+        "id": "escort-gun",
+        "name": "Escort deck gun",
+        "group": "weapons",
+        "fields": [
+          {
+            "id": "flight",
+            "label": "Flight",
+            "symbol": "ESCORT_GUN_FLIGHT",
+            "value": 32,
+            "min": 8,
+            "max": 80,
+            "detail": "Frames the shell flies."
+          },
+          {
+            "id": "speed",
+            "label": "Speed",
+            "symbol": "ESCORT_GUN_SPEED",
+            "value": 96,
+            "min": 16,
+            "max": 200,
+            "detail": "Same units as a ship's per-tick step."
+          },
+          {
+            "id": "hit",
+            "label": "Hit radius",
+            "symbol": "ESCORT_GUN_HIT",
+            "value": 14,
+            "min": 4,
+            "max": 40,
+            "detail": "Pixels. Only a boat shallower than depth 8."
+          },
+          {
+            "id": "dmg",
+            "label": "Damage",
+            "symbol": "ESCORT_GUN_DMG",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "Hits on the boat."
+          },
+          {
+            "id": "cool",
+            "label": "Reload",
+            "symbol": "ESCORT_GUN_COOL",
+            "value": 20,
+            "min": 1,
+            "max": 60,
+            "detail": "Frames before another shell."
+          }
+        ]
+      },
+      {
+        "id": "boat-gun",
+        "name": "U-boat deck gun",
+        "group": "weapons",
+        "fields": [
+          {
+            "id": "dmg",
+            "label": "Damage",
+            "symbol": "BOAT_GUN_DMG",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "VIIC and IXC only. The gun does not fire yet.",
+            "pending": true
+          },
+          {
+            "id": "hit",
+            "label": "Hit radius",
+            "symbol": "BOAT_GUN_HIT",
+            "value": 14,
+            "min": 4,
+            "max": 40,
+            "detail": "Pixels.",
+            "pending": true
+          }
+        ]
+      },
+      {
+        "id": "dc",
+        "name": "Depth charge",
+        "group": "weapons",
+        "fields": [
+          {
+            "id": "fuse",
+            "label": "Fuse",
+            "symbol": "DC_FUSE",
+            "value": 28,
+            "min": 8,
+            "max": 80,
+            "detail": "Frames until the blast."
+          },
+          {
+            "id": "blast",
+            "label": "Blast",
+            "symbol": "DC_BLAST",
+            "value": 16,
+            "min": 4,
+            "max": 48,
+            "detail": "Pixels."
+          },
+          {
+            "id": "dmg",
+            "label": "Damage",
+            "symbol": "DC_DMG",
+            "value": 1,
+            "min": 1,
+            "max": 12,
+            "detail": "Hits on the boat. Shares the gun's hit counter today."
+          },
+          {
+            "id": "cool",
+            "label": "Reload",
+            "symbol": "DC_COOL",
+            "value": 28,
+            "min": 1,
+            "max": 60,
+            "detail": "Frames before another charge."
+          }
+        ]
+      }
+    ]
+  }
 }

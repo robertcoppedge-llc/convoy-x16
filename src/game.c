@@ -12,6 +12,7 @@ static unsigned char sunk[N_SHIP];
 static unsigned char player;
 static unsigned char conn_on;
 static unsigned char tubes, hits, tonnage, winner;
+static unsigned char taken[N_SHIP];
 static unsigned char ping_f, drop_f, fire_f, gun_f;
 static unsigned char cool_fire, cool_dc[N_ESCORT], cool_drop;
 static unsigned char contact_age, hear_on, hear_hdg, watch_on, watch_hdg;
@@ -58,10 +59,10 @@ typedef struct {
 } boat_info;
 
 static const boat_info boats[BOAT_N] = {
-    { "TYPE II", SPR_II,   13,  7, 3, 0, 0 },
-    { "VIIC",    SPR_VIIC, 17,  7, 4, 1, 1 },
-    { "IXC",     SPR_IXC,  18,  7, 4, 2, 1 },
-    { "XXI",     SPR_XXI,  15, 17, 6, 0, 0 }
+    { "TYPE II", SPR_II,   BOAT_II_SURF,   BOAT_II_SUB,   BOAT_II_BOW,   BOAT_II_STERN,   BOAT_II_GUN },
+    { "VIIC",    SPR_VIIC, BOAT_VIIC_SURF, BOAT_VIIC_SUB, BOAT_VIIC_BOW, BOAT_VIIC_STERN, BOAT_VIIC_GUN },
+    { "IXC",     SPR_IXC,  BOAT_IXC_SURF,  BOAT_IXC_SUB,  BOAT_IXC_BOW,  BOAT_IXC_STERN,  BOAT_IXC_GUN },
+    { "XXI",     SPR_XXI,  BOAT_XXI_SURF,  BOAT_XXI_SUB,  BOAT_XXI_BOW,  BOAT_XXI_STERN,  BOAT_XXI_GUN }
 };
 
 const char *boat_name(unsigned char type) { return boats[type].name; }
@@ -174,10 +175,36 @@ static void mark_contact(void)
     contact_age = 1;
 }
 
+static void sink(unsigned char i);
+
 static void add_tonnage(unsigned char i)
 {
-    unsigned char pts = (ships[i].kind == SHIP_TANKER) ? 2 : 1;
+    unsigned char pts = (ships[i].kind == SHIP_TANKER) ? TANKER_TONS : (ships[i].kind == SHIP_MERCHANT) ? LIBERTY_TONS : 1;
     if (tonnage + pts < 255) tonnage = (unsigned char)(tonnage + pts);
+}
+
+static unsigned char hull_of(unsigned char i)
+{
+    if (i == UB) {
+        if (uboat_type == BOAT_II) return BOAT_II_HITS;
+        if (uboat_type == BOAT_IXC) return BOAT_IXC_HITS;
+        if (uboat_type == BOAT_XXI) return BOAT_XXI_HITS;
+        return BOAT_VIIC_HITS;
+    }
+    if (i < N_ESCORT) return ESCORT_HITS;
+    if (ships[i].kind == SHIP_TANKER) return TANKER_HITS;
+    return LIBERTY_HITS;
+}
+
+static void hurt(unsigned char i, unsigned char dmg)
+{
+    unsigned int n;
+    if (sunk[i] || !dmg) return;
+    n = (unsigned int)taken[i] + dmg;
+    if (n > 255) n = 255;
+    taken[i] = (unsigned char)n;
+    if (i == UB) hits = taken[i];
+    if (taken[i] >= hull_of(i)) sink(i);
 }
 
 void game_init(unsigned char uboat)
@@ -195,6 +222,7 @@ void game_init(unsigned char uboat)
     cool_fire = cool_drop = 0;
     tubes = boats[uboat_type].bow;
     hits = tonnage = winner = 0;
+    for (i = 0; i < N_SHIP; i++) taken[i] = 0;
     contact_age = hear_on = watch_on = ping_age = 0;
     boat_slip = 0;
     ticks = 0;
@@ -444,7 +472,7 @@ static void spawn_dc(unsigned char who)
         charge[i].x = ships[who].x;
         charge[i].y = ships[who].y;
         charge[i].hdg = ships[who].hdg;
-        charge[i].life = 28;
+        charge[i].life = DC_FUSE;
         cool_dc[who] = 36;
         return;
     }
@@ -664,7 +692,7 @@ void game_tick(void)
     }
     if (drop_f && conn_on && !cool_drop) {
         spawn_dc(selected);
-        cool_drop = 28;
+        cool_drop = DC_COOL;
     }
     drop_f = 0;
     if (fire_f) spawn_torp();
@@ -674,8 +702,8 @@ void game_tick(void)
         shell.x = ships[selected].x;
         shell.y = ships[selected].y;
         shell.hdg = ships[selected].hdg;
-        shell.life = 32;
-        cool_gun = 20;
+        shell.life = ESCORT_GUN_FLIGHT;
+        cool_gun = ESCORT_GUN_COOL;
         snd_launch = 1;
     }
     gun_f = 0;
@@ -706,9 +734,9 @@ void game_tick(void)
         if (torp[i].life) torp[i].life--;
         if (!torp[i].life) { torp[i].on = 0; continue; }
         for (t = 0; t < UB; t++) {
-            if (!sunk[t] && near_px(torp[i].x, torp[i].y, ships[t].x, ships[t].y, 12)) {
+            if (!sunk[t] && near_px(torp[i].x, torp[i].y, ships[t].x, ships[t].y, TORP_HIT)) {
                 torp[i].on = 0;
-                sink(t);
+                hurt(t, TORP_DMG);
                 break;
             }
         }
@@ -721,23 +749,20 @@ void game_tick(void)
         if (charge[i].life) continue;
         charge[i].on = 0;
         snd_boom = 1;
-        if (!sunk[UB] && near_px(charge[i].x, charge[i].y, ships[UB].x, ships[UB].y, 16)) {
-            if (hits < 255) hits++;
-            if (hits >= 3) sink(UB);
-        }
+        if (!sunk[UB] && near_px(charge[i].x, charge[i].y, ships[UB].x, ships[UB].y, DC_BLAST))
+            hurt(UB, DC_DMG);
     }
     if (shell.on) {
-        vel(shell.hdg, 96, &vx, &vy);
+        vel(shell.hdg, ESCORT_GUN_SPEED, &vx, &vy);
         shell.x += vx - cvx;
         shell.y += vy - cvy;
         if (shell.life) shell.life--;
         if (!shell.life) shell.on = 0;
         else if (!sunk[UB] && depth < 8 &&
-                 near_px(shell.x, shell.y, ships[UB].x, ships[UB].y, 14)) {
+                 near_px(shell.x, shell.y, ships[UB].x, ships[UB].y, ESCORT_GUN_HIT)) {
             shell.on = 0;
             snd_boom = 1;
-            if (hits < 255) hits++;
-            if (hits >= 3) sink(UB);
+            hurt(UB, ESCORT_GUN_DMG);
         }
     }
     if (!sunk[UB] && depth < 8 && !cool_ram) {
@@ -746,8 +771,7 @@ void game_tick(void)
             if (!near_px(ships[i].x, ships[i].y, ships[UB].x, ships[UB].y, 18)) continue;
             cool_ram = 40;
             snd_boom = 1;
-            if (hits < 255) hits++;
-            if (hits >= 3) sink(UB);
+            hurt(UB, 1);
             break;
         }
     }
