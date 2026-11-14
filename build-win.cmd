@@ -11,6 +11,8 @@ setlocal
 set CC65=%~dp0..\..\tools\cc65\win32
 set PATH=%CC65%\bin;%PATH%
 cd /d "%~dp0"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\write-balance.ps1"
+if errorlevel 1 exit /b 1
 if "%X16LIB%"=="" set X16LIB=..\x16-lib-poc
 set X16LIB_MODULES=display fileio\file_load fileio\file_banks fileio\file_save fileio\config_load vera\vera_addr vera\vera_addr16 vram\vram_upload tilemap\tilemap_stream layers\layer_config_tile layers\layer_config_bitmap layers\layer_enable_in_dc layers\layer_scroll audio\psg_core sprites\sprite_put sprites\sprite_hide sprites\sprite_enable bank\bank_jsr expansion\exp_uart expansion\netcard
 set SRCS=src\main.c src\game.c src\platform.c src\link.c

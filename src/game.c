@@ -426,7 +426,7 @@ static void spawn_torp(void)
         torp[i].x = ships[UB].x;
         torp[i].y = ships[UB].y;
         torp[i].hdg = ships[UB].hdg;
-        torp[i].life = 80;
+        torp[i].life = TORP_LIFE;
         tubes--;
         cool_fire = 20;
         snd_launch = 1;
@@ -700,7 +700,7 @@ void game_tick(void)
     for (i = 0; i < N_TORP; i++) {
         unsigned char t;
         if (!torp[i].on) continue;
-        vel(torp[i].hdg, 6 * FP, &vx, &vy);
+        vel(torp[i].hdg, TORP_SPEED * FP, &vx, &vy);
         torp[i].x += vx - cvx;
         torp[i].y += vy - cvy;
         if (torp[i].life) torp[i].life--;

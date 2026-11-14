@@ -1,5 +1,6 @@
 #ifndef GAME_H
 #define GAME_H
+#include "balance.h"          /* Project-X16 Balance page */
 
 /* Plot sim. Positions are signed 16-bit, in 1/16 of a pixel (FP).
  * The screen is the battle space. Each tick subtracts the convoy's
@@ -51,6 +52,12 @@
 
 #define TONNAGE_WIN 4
 #define N_TORP 4
+#ifndef TORP_SPEED
+#define TORP_SPEED 6          /* torpedo speed, in the same units as a telegraph step */
+#endif
+#ifndef TORP_LIFE
+#define TORP_LIFE 80          /* frames a torpedo runs */
+#endif
 #define N_DC   4
 
 #define FP 16
