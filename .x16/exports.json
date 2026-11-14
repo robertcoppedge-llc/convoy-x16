@@ -1,0 +1,393 @@
+{
+  "format": "x16.exports",
+  "records": {
+    "bowesc": {
+      "doc": "assets/pictures/bowesc.x16pic.json",
+      "format": "x16.picture",
+      "outputs": [
+        {
+          "bytes": 15360,
+          "file": "boot/BOWESC.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "BOWESC.BIN",
+          "kind": "RM_TILES",
+          "list": "vram",
+          "size": 15360
+        }
+      ],
+      "time": "2026-11-13T15:58:34-06:00",
+      "tool": "pixel"
+    },
+    "bowubt": {
+      "doc": "assets/pictures/bowubt.x16pic.json",
+      "format": "x16.picture",
+      "outputs": [
+        {
+          "bytes": 15360,
+          "file": "boot/BOWUBT.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "BOWUBT.BIN",
+          "kind": "RM_TILES",
+          "list": "vram",
+          "size": 15360
+        }
+      ],
+      "time": "2026-11-13T15:58:35-06:00",
+      "tool": "pixel"
+    },
+    "credits": {
+      "doc": "assets/pictures/credits.x16pic.json",
+      "format": "x16.picture",
+      "outputs": [
+        {
+          "bytes": 76800,
+          "file": "boot/CREDITS.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "CREDITS.BIN",
+          "kind": "RM_BITMAP",
+          "list": "vram",
+          "size": 76800
+        }
+      ],
+      "time": "2026-11-13T15:58:35-06:00",
+      "tool": "pixel"
+    },
+    "game": {
+      "doc": "assets/sprites/game.x16spr.json",
+      "format": "x16.sprites",
+      "outputs": [
+        {
+          "bytes": 256,
+          "file": "boot/CHARGE.BIN"
+        },
+        {
+          "bytes": 2048,
+          "file": "boot/CROSS.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/ESCORT.BIN"
+        },
+        {
+          "bytes": 4224,
+          "file": "boot/GAUGES.BIN"
+        },
+        {
+          "bytes": 256,
+          "file": "boot/MARKS.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/MERCHANT.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/MID.BIN"
+        },
+        {
+          "bytes": 640,
+          "file": "boot/NUMBERS.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/P16PROF.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/P32ESC.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/P32MER.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/P32TNK.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/P32UBT.BIN"
+        },
+        {
+          "bytes": 2048,
+          "file": "boot/P8PROF.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/PROFESC.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/PROFMER.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/PROFTNK.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/PROFUBT.BIN"
+        },
+        {
+          "bytes": 4160,
+          "file": "boot/SCOPE.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/TANKER.BIN"
+        },
+        {
+          "bytes": 8192,
+          "file": "boot/TINY.BIN"
+        },
+        {
+          "bytes": 32768,
+          "file": "boot/UBOAT.BIN"
+        },
+        {
+          "bytes": 4608,
+          "file": "boot/WEAPONS.BIN"
+        },
+        {
+          "bytes": 2048,
+          "file": "boot/ZOOM.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "CHARGE.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 256
+        },
+        {
+          "file": "CROSS.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 2048
+        },
+        {
+          "file": "ESCORT.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "GAUGES.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 4224
+        },
+        {
+          "file": "MARKS.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 256
+        },
+        {
+          "file": "MERCHANT.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "MID.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "NUMBERS.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 640
+        },
+        {
+          "file": "P16PROF.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "P32ESC.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "P32MER.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "P32TNK.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "P32UBT.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "P8PROF.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 2048
+        },
+        {
+          "file": "PROFESC.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "PROFMER.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "PROFTNK.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "PROFUBT.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "SCOPE.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 4160
+        },
+        {
+          "file": "TANKER.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "TINY.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 8192
+        },
+        {
+          "file": "UBOAT.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 32768
+        },
+        {
+          "file": "WEAPONS.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 4608
+        },
+        {
+          "file": "ZOOM.BIN",
+          "kind": "RM_SPRITE",
+          "list": "vram",
+          "size": 2048
+        }
+      ],
+      "time": "2026-11-13T19:20:51-06:00",
+      "tool": "pixel"
+    },
+    "main": {
+      "doc": "assets/palettes/main.x16pal.json",
+      "format": "x16.palette",
+      "outputs": [
+        {
+          "bytes": 64,
+          "file": "boot/PAL.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "PAL.BIN",
+          "list": "palette",
+          "row": 0,
+          "rows": 2
+        }
+      ],
+      "time": "2026-11-13T08:36:06-06:00",
+      "tool": "pixel"
+    },
+    "sea": {
+      "doc": "assets/tiles/sea.x16tile.json",
+      "format": "x16.tiles",
+      "outputs": [
+        {
+          "bytes": 768,
+          "file": "boot/TILES.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "TILES.BIN",
+          "kind": "RM_TILES",
+          "list": "vram",
+          "size": 768
+        }
+      ],
+      "time": "2026-11-13T08:36:06-06:00",
+      "tool": "pixel"
+    },
+    "sfx": {
+      "tool": "sound",
+      "format": "x16.sounds",
+      "doc": "assets/sounds/sfx.x16snd.json",
+      "time": "2026-11-13T08:36:09.1032659-06:00",
+      "outputs": [
+        {
+          "file": "build/gen/sfx_ids.h",
+          "bytes": 250
+        },
+        {
+          "file": "build/gen/sfx_sfx.h",
+          "bytes": 849
+        }
+      ],
+      "resmap": []
+    },
+    "title": {
+      "doc": "assets/pictures/title.x16pic.json",
+      "format": "x16.picture",
+      "outputs": [
+        {
+          "bytes": 76800,
+          "file": "boot/TITLE.BIN"
+        }
+      ],
+      "resmap": [
+        {
+          "file": "TITLE.BIN",
+          "kind": "RM_BITMAP",
+          "list": "vram",
+          "size": 76800
+        }
+      ],
+      "time": "2026-11-13T15:58:35-06:00",
+      "tool": "pixel"
+    }
+  },
+  "schema": 1
+}

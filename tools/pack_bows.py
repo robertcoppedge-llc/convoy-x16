@@ -35,11 +35,13 @@ def main():
     count = want // 32
     sky = bytes([0x88]) * 32
     horizon = bytes([0x88]) * 24 + bytes([0x77]) * 4 + bytes([0x11]) * 4
-    for name in ("bowesc.bin", "bowubt.bin"):
+    for name in ("BOWESC.BIN", "BOWUBT.BIN"):
         raw = (BOOT / name).read_bytes()
         if len(raw) != want:
             sys.exit(f"{name} is {len(raw)} bytes, want {want}")
-        (BOOT / name).write_bytes(blank + raw + sky + horizon)
+        dest = BOOT / name
+        dest.unlink()
+        dest.write_bytes(blank + raw + sky + horizon)
     sky_i = 1 + count
     hor_i = sky_i + 1
     mw, mh = 128, 64
@@ -63,7 +65,10 @@ def main():
             cell = (orow + ty) * mw + (oc + tx)
             m[cell * 2] = idx & 255
             m[cell * 2 + 1] = (idx >> 8) & 3
-    (BOOT / "bowmap.bin").write_bytes(m)
+    dest = BOOT / "BOWMAP.BIN"
+    if dest.exists():
+        dest.unlink()
+    dest.write_bytes(m)
     print(f"bow layer {cols}x{rows} tiles at {oc},{orow}, atlas {want + 96} bytes")
 
 

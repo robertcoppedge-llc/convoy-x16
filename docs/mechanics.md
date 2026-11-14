@@ -6,9 +6,9 @@ Where those pieces sit in memory is [banking.md](banking.md).
 
 ## Phases
 
-The title is a picture, `assets/pictures/title.x16pic.json`, with the choices along the bottom. `1` starts an escort match. `2` starts a U-boat match. `3` is the link. `T` cycles the boat type. `C` is the credits picture, `assets/pictures/credits.x16pic.json`. Any key on the credits returns to the title. After a win, any key opens the credits.
+The title is a picture, `assets/pictures/title.x16pic.json`. While that picture or a match is loading, the bottom line says `LOADING`. `1` starts an escort match. `2` starts a U-boat match. `3` is the link. `T` cycles the boat type. `O` is options: music and effects on or off, saved in `boot/CONVOY.CFG`. There is no title theme yet, so the music flag is stored and nothing plays. Effects off also stops the escort's engine drone. `C` is the credits picture, `assets/pictures/credits.x16pic.json`. `Q` opens the credits too. Any key on the credits returns to the title. After a win, any key opens the credits.
 
-`1` and `2` read that side's views from disk before the sea is drawn. The chart, the bridge, the glasses, the zoom steps, and the U-boat's control room are then in memory. Switching among them does not read the disk. An escort match does not load the control-room gauges or the periscope crosshair. A U-boat match does not load the escort's bow. Both matches load every hull you can look at, because the other side is on the screen.
+`1` and `2` read that side's views from disk before the sea is drawn. The title picture stays up, with `LOADING` on it, until that read finishes. The chart, the bridge, the glasses, the zoom steps, and the U-boat's control room are then in memory. Switching among them does not read the disk. An escort match does not load the control-room gauges or the periscope crosshair. A U-boat match does not load the escort's bow. Both matches load every hull you can look at, because the other side is on the screen.
 
 ## Frame
 
@@ -42,7 +42,7 @@ The escort who has the conn takes the wheel and the telegraph. The other escorts
 
 On the chart, the arrow keys are helm and telegraph for the escort. `N` and `M` do not steer there. On the bridge and in the control room, `N` and `M` and the arrows turn the ship, and the look stays on the bow. In the binoculars and the periscope, those same keys only slew the look. They do not change heading.
 
-The U-boat's helm keys are `J` and `L`, and the arrows on her bridge and in the control room. `Y` and `U` raise and dive. `I` and `K` are her telegraph.
+The U-boat's helm keys are `J` and `L`, and the arrows on her bridge and in the control room. `Y` and `U` raise and dive. The moment her depth leaves the surface, the view changes to the control room. `I` and `K` are her telegraph.
 
 ## Views
 
@@ -54,7 +54,7 @@ The bridge, for the escort and for the surfaced boat, shows a fixed picture of y
 
 The glasses are a mask: two circles for the escort, one for the periscope. Sky and a white horizon line are painted on that mask. The sea under the line scrolls. Hulls sit between the layers, so the mask clips them. A line on the mask shows heading and look as one of sixteen points, `0` north, then clockwise. That is not a three-digit degree readout. The periscope also draws a crosshair.
 
-The control room is dials for heading, depth, and planes, plus tube and battery lamps. It is not a window on the sea.
+The control room is three copies of the chart's scope face, with a needle on each for heading, depth, and planes. Tube and battery lamps are 8-pixel sprites. It is not a window on the sea.
 
 Sixteen aspects, 22.5° each, because 16 divides 256. Frame 0 is bow-on in the ahead view and bow-north on the chart, then clockwise. The bridge and the glasses use the same sixteen aspects. Range picks 64, 32, 16, or 8 pixels, and the waterline stays a short step under the horizon. A far ship is the small sprite on that line. The glasses use those same sheets one size larger, and the bearings spread further across the glass. The chart's `Z` sizes are a different set, overhead, and they stay. The ahead-view sheets are banks 29–44, with the smaller copies in banks 45–50. The chart sheets are banks 1–28. The frame you can see is copied into that ship's slot. The machine cannot scale a sprite; a 64-pixel image shown as 16 pixels would be a strip, so each size is its own sheet.
 
@@ -66,15 +66,13 @@ On the chart the camera follows the conn ship, and the wave pattern also creeps 
 
 On the bridge and in the glasses the ship's own course and speed are taken off the wind, then laid onto the window. Ahead comes down the glass toward the bow. A stern sea goes up toward the horizon. A beam sea slides across. Turning changes that direction. The horizon line does not scroll with the water. It is on the layer above.
 
-Wakes are eight copies of one ring, dropped in world space as a ship moves. They stay where they were dropped, so a turn leaves a curve. A stopped ship does not drop. A boat at depth 8 or more does not drop. The rings are one size. VERA cannot grow them.
-
 ## Detection and weapons
 
-Radar, sonar, and hydrophone are three faces on the chart, each four 64-pixel sprites. The radar sweep turns on its own. Convoy contacts are white. The boat is red. Radar does not show the boat at depth 8 or more. A red diamond on the chart is the last plotted spot after she dives, not an explosion and not a kill.
+Radar, sonar, and hydrophone are three faces on the chart, each four 64-pixel sprites. The radar sweep turns on its own. It draws at most four contacts, each an 8-pixel blip. Convoy contacts are white. The boat is red. Radar does not show the boat at depth 8 or more. A red diamond on the chart is the last plotted spot after she dives, not an explosion and not a kill.
 
 An escort ping looks up the bow. The first ping waits. After a contact, the hydrophone has a bearing. Visual range is what the bridge and the glasses use. A boat that is close but deep is not drawn there.
 
-Escort `F` is the deck gun, and it only hurts a boat that is still up. Driving an escort onto a surfaced boat rams her. Three hits sink the boat. `D` drops a depth charge. `S` pings.
+Escort `F` is the deck gun, and it only hurts a boat that is still up. Driving an escort onto a surfaced boat rams her. Three hits sink the boat. `D` drops a depth charge. The charge is one sprite. It does not turn with the ship. `S` pings.
 
 U-boat `F` fires the bow tubes, up to four torpedoes. A tanker is two points of tonnage, a Liberty is one. Four points wins. The escort wins by sinking the boat.
 

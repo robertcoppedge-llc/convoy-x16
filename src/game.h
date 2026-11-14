@@ -120,7 +120,6 @@ unsigned char game_show_uboat(void);
 unsigned char game_show_ship(unsigned char i);
 unsigned char game_show_contact(int *x, int *y);
 void game_water(unsigned char i, int *vx, int *vy);
-unsigned char game_wake_at(unsigned char n, int *x, int *y);
 unsigned char game_torp_on(unsigned char i);
 void game_torp_xy(unsigned char i, int *x, int *y);
 unsigned char game_torp_hdg(unsigned char i);

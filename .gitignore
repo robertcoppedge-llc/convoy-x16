@@ -14,5 +14,8 @@ x64/
 Debug/
 Release/
 *.vcxproj.user
-# export sidecars carry a build timestamp
+# tool scratch (X16-TOOLS-STANDARD section 2); .x16/exports.json is tracked
+.x16/scratch/
+__pycache__/
+# old per-resource sidecars; schema 3 keeps one .x16/exports.json
 .x16/*.export.json

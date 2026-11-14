@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="172" font-family="Segoe UI, sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="10" y="20" font-size="14" font-weight="bold">VRAM by phase (hover for details)</text>
+<text x="10" y="52">P_TITLE</text>
+<rect x="110" y="34" width="840" height="26" fill="#f0f0f0" stroke="#999"/>
+<rect x="110.0" y="34" width="492.2" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_CARD $00000+$12C00: title or credits, 640x480 2bpp</title></rect>
+<rect x="818.8" y="34" width="105.0" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_TEXT $1B000+$4000: KERNAL 80x60 text</title></rect>
+<rect x="923.8" y="34" width="13.1" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_FONT $1F000+$0800: KERNAL charset</title></rect>
+<rect x="939.7" y="34" width="10.3" height="26" fill="#555555" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>reserved: VERA PSG, palette, sprite attributes</title></rect>
+<text x="10" y="88">P_CREDITS</text>
+<rect x="110" y="70" width="840" height="26" fill="#f0f0f0" stroke="#999"/>
+<rect x="110.0" y="70" width="492.2" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_CARD $00000+$12C00: title or credits, 640x480 2bpp</title></rect>
+<rect x="818.8" y="70" width="105.0" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_TEXT $1B000+$4000: KERNAL 80x60 text</title></rect>
+<rect x="923.8" y="70" width="13.1" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_FONT $1F000+$0800: KERNAL charset</title></rect>
+<rect x="939.7" y="70" width="10.3" height="26" fill="#555555" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>reserved: VERA PSG, palette, sprite attributes</title></rect>
+<text x="10" y="124">P_PLAY</text>
+<rect x="110" y="106" width="840" height="26" fill="#f0f0f0" stroke="#999"/>
+<rect x="110.0" y="106" width="4.9" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_TILES $00000+$0300: six 16x16 4bpp sea tiles</title></rect>
+<rect x="116.6" y="106" width="52.5" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_SEAMAP $00400+$2000: 64x64 sea map, streamed</title></rect>
+<rect x="169.1" y="106" width="26.7" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_SCOPE $02400+$1040: radar beam, scope face, two 8px blips</title></rect>
+<rect x="201.9" y="106" width="13.1" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_CROSS $03800+$0800: 64px periscope crosshair</title></rect>
+<rect x="215.0" y="106" width="1.6" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_MARKS $04000+$0100: 16px eel mark and burst</title></rect>
+<rect x="218.3" y="106" width="13.1" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_ZOOM $04200+$0800: 8px chart hulls, four kinds</title></rect>
+<rect x="234.7" y="106" width="4.1" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_NUM $04C00+$0280: 16px and 8px digits</title></rect>
+<rect x="241.2" y="106" width="288.8" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_HULL $05000+$B000: 22 live hull slots, 2 KB each, copied from banks</title></rect>
+<rect x="530.0" y="106" width="105.0" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_BOWMAP $10000+$4000: 128x64 bow tile map</title></rect>
+<rect x="635.0" y="106" width="99.1" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_BOW $14000+$3C60: bow atlas; one side at a time</title></rect>
+<rect x="740.0" y="106" width="29.5" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_WEAP $18000+$1200: eel, torpedo wake, splash column</title></rect>
+<rect x="769.5" y="106" width="3.3" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_DC $19200+$0200: four depth-charge slots, copied from the charge bank</title></rect>
+<rect x="772.8" y="106" width="27.1" height="26" fill="#f28e2b" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_GAUGE $19400+$1080: needles and 8px lamps</title></rect>
+<rect x="818.8" y="106" width="105.0" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_TEXT $1B000+$4000: KERNAL 80x60 text</title></rect>
+<rect x="923.8" y="106" width="13.1" height="26" fill="#4e79a7" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>V_FONT $1F000+$0800: KERNAL charset</title></rect>
+<rect x="939.7" y="106" width="10.3" height="26" fill="#555555" fill-opacity="0.8" stroke="#333" stroke-width="0.5"><title>reserved: VERA PSG, palette, sprite attributes</title></rect>
+<line x1="110.0" y1="30" x2="110.0" y2="142" stroke="#666"/>
+<text x="110.0" y="156" text-anchor="middle">$00000</text>
+<line x1="215.0" y1="30" x2="215.0" y2="142" stroke="#666"/>
+<text x="215.0" y="156" text-anchor="middle">$04000</text>
+<line x1="320.0" y1="30" x2="320.0" y2="142" stroke="#666"/>
+<text x="320.0" y="156" text-anchor="middle">$08000</text>
+<line x1="425.0" y1="30" x2="425.0" y2="142" stroke="#666"/>
+<text x="425.0" y="156" text-anchor="middle">$0C000</text>
+<line x1="530.0" y1="30" x2="530.0" y2="142" stroke="#666"/>
+<text x="530.0" y="156" text-anchor="middle">$10000</text>
+<line x1="635.0" y1="30" x2="635.0" y2="142" stroke="#666"/>
+<text x="635.0" y="156" text-anchor="middle">$14000</text>
+<line x1="740.0" y1="30" x2="740.0" y2="142" stroke="#666"/>
+<text x="740.0" y="156" text-anchor="middle">$18000</text>
+<line x1="845.0" y1="30" x2="845.0" y2="142" stroke="#666"/>
+<text x="845.0" y="156" text-anchor="middle">$1C000</text>
+<line x1="950.0" y1="30" x2="950.0" y2="142" stroke="#666"/>
+<text x="950.0" y="156" text-anchor="middle">$20000</text>
+<text x="950" y="168" text-anchor="end" fill="#666">VRAM address</text>
+<rect x="300" y="8" width="10" height="10" fill="#4e79a7"/><text x="313" y="17">always</text>
+<rect x="380" y="8" width="10" height="10" fill="#59a14f"/><text x="393" y="17">per_game</text>
+<rect x="460" y="8" width="10" height="10" fill="#f28e2b"/><text x="473" y="17">per_view</text>
+<rect x="540" y="8" width="10" height="10" fill="#e15759"/><text x="553" y="17">shared</text>
+<rect x="620" y="8" width="10" height="10" fill="#76b7b2"/><text x="633" y="17">code</text>
+<rect x="700" y="8" width="10" height="10" fill="#edc948"/><text x="713" y="17">data</text>
+<rect x="780" y="8" width="10" height="10" fill="#bab0ac"/><text x="793" y="17">spare</text>
+</svg>

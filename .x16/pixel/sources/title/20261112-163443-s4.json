@@ -1,0 +1,12 @@
+{
+  "generator": "comfy-txt2picture",
+  "tool": "pixel-cli",
+  "source": ".x16/pixel/sources/title/20261112-163443-s4.png",
+  "prompt": "North Atlantic convoy poster, chunky pixel art, a grey escort warship seen from ahead in the foreground, freighters in a column on a dark sea, pale overcast sky, high contrast, no text",
+  "negative": "text, letters, words, numbers, logo, watermark, signature, photorealistic, blurry",
+  "seed": 4,
+  "steps": 20,
+  "cfg": 7,
+  "model": "sd_xl_base_1.0_0.9vae.safetensors + Pixel_Art_SDXL.safetensors + pixelateX8VAEForSDXL_v10.safetensors",
+  "date": "2026-11-12"
+}

@@ -1,28 +1,45 @@
 {
   "comment": "Metadata for Project-X16. Not read by the build: the project's build scripts, x16cfg.h and vendor lock are the source of truth.",
-  "schema": 2,
+  "schema": 3,
   "name": "convoy-x16",
   "displayName": "Convoy (X16)",
   "kind": "app",
-  "genre": ["single-screen"],
-  "elements": ["sprites", "pictures", "tiles", "sound", "text"],
+  "genre": [
+    "single-screen"
+  ],
+  "elements": [
+    "sprites",
+    "pictures",
+    "tiles",
+    "sound",
+    "text"
+  ],
   "targets": [
     {
       "id": "CONVOY",
       "prg": "build/CONVOY.PRG",
       "map": "build/CONVOY.map",
-      "build": { "win": "build-win.cmd", "posix": "make", "cwd": "." },
+      "build": {
+        "win": "build-win.cmd",
+        "posix": "make",
+        "cwd": "."
+      },
       "variants": [
         {
           "id": "smoke",
           "args": "smoke",
           "prg": "build/SMOKE.PRG",
-          "defines": ["CONVOY_SMOKE=1"]
+          "defines": [
+            "CONVOY_SMOKE=1"
+          ]
         }
       ],
       "run": {
         "script": "run-win.cmd",
-        "emuArgs": ["-scale", "2"],
+        "emuArgs": [
+          "-scale",
+          "2"
+        ],
         "fsroot": "boot"
       },
       "smoke": {
@@ -39,26 +56,55 @@
     "modules": [
       "display",
       "fileio/file_load",
+      "fileio/file_banks",
+      "fileio/file_save",
+      "fileio/config_load",
       "vera/vera_addr",
       "vera/vera_addr16",
+      "vram/vram_upload",
+      "tilemap/tilemap_stream",
       "layers/layer_config_tile",
+      "layers/layer_config_bitmap",
       "layers/layer_enable_in_dc",
       "layers/layer_scroll",
-      "audio/psg_core"
+      "audio/psg_core",
+      "sprites/sprite_put",
+      "sprites/sprite_hide",
+      "sprites/sprite_enable",
+      "bank/bank_jsr",
+      "expansion/exp_uart",
+      "expansion/netcard"
     ],
-    "source": ["build-win.cmd:X16LIB_MODULES", "Makefile:X16LIB_MODULES"]
+    "source": [
+      "build-win.cmd:X16LIB_MODULES",
+      "Makefile:X16LIB_MODULES"
+    ]
   },
   "config": {
     "cfgHeader": "src/x16cfg.h",
-    "flags": { "X16_NO_SPRITE_POOL": 1 },
-    "defines": ["X16LIB_HAVE_CFG"],
+    "flags": {
+      "X16_NO_SPRITE_POOL": 1
+    },
+    "defines": [
+      "X16LIB_HAVE_CFG"
+    ],
     "cpu": "6502"
+  },
+  "options": {
+    "file": "convoy.cfg",
+    "version": 1,
+    "fields": [
+      { "name": "music", "type": "u8", "default": 1 },
+      { "name": "sfx", "type": "u8", "default": 1 }
+    ]
   },
   "budgets": {
     "prgMax": 36864,
-    "forbid": ["sprite_pool.o", "sprites.o"]
+    "forbid": [
+      "sprite_pool.o",
+      "sprites.o"
+    ]
   },
-  "notes": "One sprite document, assets/sprites/game.x16spr.json, holds every in-game sprite: chart hulls, bridge profiles, zoom steps, scopes, gauges, weapons, and marks. Pictures in this same project are the escort bow, the U-boat bow, the title card, and the credits card (assets/pictures). Sea tiles are assets/tiles/sea.x16tile.json. Palette is assets/palettes/main.x16pal.json. The plan is docs/game-plan.md.",
   "resources": {
     "palettes": [
       {
@@ -66,8 +112,25 @@
         "type": "palette",
         "doc": "assets/palettes/main.x16pal.json",
         "tool": "pixel",
-        "outputs": [{ "file": "boot/PAL.BIN", "bytes": 64 }],
-        "placement": { "target": "vram", "addr": "0x1FA00", "loader": "file_load (FILE_TO_VRAM)" }
+        "outputs": [
+          {
+            "file": "boot/PAL.BIN",
+            "bytes": 64
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x1FA00",
+          "loader": "file_load (FILE_TO_VRAM)"
+        },
+        "resmap": [
+          {
+            "list": "palette",
+            "file": "PAL.BIN",
+            "row": 0,
+            "rows": 2
+          }
+        ]
       }
     ],
     "tiles": [
@@ -76,9 +139,27 @@
         "type": "tiles",
         "doc": "assets/tiles/sea.x16tile.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export-tiles",
-        "outputs": [{ "file": "boot/TILES.BIN", "bytes": 768 }],
-        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load (FILE_TO_VRAM)" }
+        "outputs": [
+          {
+            "file": "boot/TILES.BIN",
+            "bytes": 768
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x00000",
+          "phases": ["play"],
+          "loader": "file_load (FILE_TO_VRAM). Play only. The title and credits cards use this address in other phases."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "TILES.BIN",
+            "size": 768,
+            "kind": "RM_TILES"
+          }
+        ],
+        "exporter": "pixel-cli export-tiles"
       }
     ],
     "pictures": [
@@ -87,36 +168,112 @@
         "type": "picture",
         "doc": "assets/pictures/bowesc.x16pic.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export-picture",
-        "outputs": [{ "file": "boot/bowesc.bin" }, { "file": "boot/bowmap.bin" }],
-        "placement": { "target": "vram", "addr": "0x14000", "loader": "file_load. Layer 1 on the bridge. Map at $10000 is shared with bowubt." }
+        "outputs": [
+          {
+            "file": "boot/BOWESC.BIN",
+            "bytes": 15360
+          },
+          {
+            "file": "boot/BOWMAP.BIN",
+            "bytes": 16384
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x14000",
+          "share": "bow",
+          "loader": "file_load, then tools/pack_bows.py. Pixel writes 15360 bytes; the pack step adds a blank tile, a sky tile, and a horizon tile, so the file on disk is 15456. The same step writes boot/BOWMAP.BIN (16384), which is not a Pixel export. One bow at a time, shared with bowubt. Map at $10000."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "BOWESC.BIN",
+            "size": 15360,
+            "kind": "RM_TILES"
+          }
+        ],
+        "exporter": "pixel-cli export-picture"
       },
       {
         "id": "bowubt",
         "type": "picture",
         "doc": "assets/pictures/bowubt.x16pic.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export-picture",
-        "outputs": [{ "file": "boot/bowubt.bin" }],
-        "placement": { "target": "vram", "addr": "0x14000", "loader": "file_load over the escort bow when the player is the boat" }
+        "outputs": [
+          {
+            "file": "boot/BOWUBT.BIN",
+            "bytes": 15360
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x14000",
+          "share": "bow",
+          "loader": "file_load over the escort bow when the player is the boat, then the same pack_bows.py step. Pixel writes 15360 bytes; the packed file is 15456."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "BOWUBT.BIN",
+            "size": 15360,
+            "kind": "RM_TILES"
+          }
+        ],
+        "exporter": "pixel-cli export-picture"
       },
       {
         "id": "title",
         "type": "picture",
         "doc": "assets/pictures/title.x16pic.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export-picture",
-        "outputs": [{ "file": "boot/title.bin", "bytes": 76800 }],
-        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load. Layer 0 bitmap, title phase only. 2bpp because a 4bpp 640x480 picture does not fit VERA." }
+        "outputs": [
+          {
+            "file": "boot/TITLE.BIN",
+            "bytes": 76800
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x00000",
+          "phases": ["title"],
+          "loader": "file_load. Layer 0 bitmap, title phase only. 2bpp because a 4bpp 640x480 picture does not fit VERA."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "TITLE.BIN",
+            "size": 76800,
+            "kind": "RM_BITMAP"
+          }
+        ],
+        "exporter": "pixel-cli export-picture"
       },
       {
         "id": "credits",
         "type": "picture",
         "doc": "assets/pictures/credits.x16pic.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export-picture",
-        "outputs": [{ "file": "boot/credits.bin", "bytes": 76800 }],
-        "placement": { "target": "vram", "addr": "0x00000", "loader": "file_load over the title card. Credits phase only." }
+        "outputs": [
+          {
+            "file": "boot/CREDITS.BIN",
+            "bytes": 76800
+          }
+        ],
+        "placement": {
+          "target": "vram",
+          "addr": "0x00000",
+          "phases": ["credits"],
+          "loader": "file_load over the title card. Credits phase only."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "CREDITS.BIN",
+            "size": 76800,
+            "kind": "RM_BITMAP"
+          }
+        ],
+        "exporter": "pixel-cli export-picture"
       }
     ],
     "sprites": [
@@ -125,31 +282,220 @@
         "type": "sprites",
         "doc": "assets/sprites/game.x16spr.json",
         "tool": "pixel",
-        "exporter": "pixel-cli export",
         "outputs": [
-          { "file": "boot/escort.bin", "bytes": 32768 },
-          { "file": "boot/merchant.bin", "bytes": 32768 },
-          { "file": "boot/tanker.bin", "bytes": 32768 },
-          { "file": "boot/uboat.bin", "bytes": 32768 },
-          { "file": "boot/wake.bin", "bytes": 32768 },
-          { "file": "boot/profesc.bin", "bytes": 32768 },
-          { "file": "boot/profmer.bin", "bytes": 32768 },
-          { "file": "boot/proftnk.bin", "bytes": 32768 },
-          { "file": "boot/profubt.bin", "bytes": 32768 },
-          { "file": "boot/zoom.bin", "bytes": 2560 },
-          { "file": "boot/marks.bin", "bytes": 256 },
-          { "file": "boot/cross.bin", "bytes": 2048 },
-          { "file": "boot/scope.bin", "bytes": 4992 },
-          { "file": "boot/gauges.bin", "bytes": 6656 },
-          { "file": "boot/weapons.bin", "bytes": 4608 },
-          { "file": "boot/mid.bin", "bytes": 32768 },
-          { "file": "boot/midwake.bin", "bytes": 8192 },
-          { "file": "boot/tiny.bin", "bytes": 8192 },
-          { "file": "boot/tinywake.bin", "bytes": 2048 },
-          { "file": "boot/charge.bin", "bytes": 4096 },
-          { "file": "boot/numbers.bin", "bytes": 640 }
+          {
+            "file": "boot/ESCORT.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/MERCHANT.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/TANKER.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/UBOAT.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/PROFESC.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/PROFMER.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/PROFTNK.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/PROFUBT.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/ZOOM.BIN",
+            "bytes": 2048
+          },
+          {
+            "file": "boot/MARKS.BIN",
+            "bytes": 256
+          },
+          {
+            "file": "boot/CROSS.BIN",
+            "bytes": 2048
+          },
+          {
+            "file": "boot/SCOPE.BIN",
+            "bytes": 4160
+          },
+          {
+            "file": "boot/GAUGES.BIN",
+            "bytes": 4224
+          },
+          {
+            "file": "boot/WEAPONS.BIN",
+            "bytes": 4608
+          },
+          {
+            "file": "boot/MID.BIN",
+            "bytes": 32768
+          },
+          {
+            "file": "boot/TINY.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/CHARGE.BIN",
+            "bytes": 256
+          },
+          {
+            "file": "boot/NUMBERS.BIN",
+            "bytes": 640
+          },
+          {
+            "file": "boot/P32ESC.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/P32MER.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/P32TNK.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/P32UBT.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/P16PROF.BIN",
+            "bytes": 8192
+          },
+          {
+            "file": "boot/P8PROF.BIN",
+            "bytes": 2048
+          }
         ],
-        "placement": { "target": "bank", "addr": "1", "loader": "One document. Chart sheets, bridge profile sheets, and the zoom sheets export to the bank and VRAM files. Sheet ids are chart-*, bridge-*, z32-*, z16-*, z8-*." }
+        "placement": {
+          "target": "bank",
+          "addr": "1",
+          "loader": "One document. Chart sheets, bridge profiles, the p32/p16/p8 step-down sheets, and the zoom sheets export to the bank and VRAM files. Sheet ids are chart-*, bridge-*, p32-*, p16-*, p8-*, z32-*, z16-*, z8-*."
+        },
+        "resmap": [
+          {
+            "list": "vram",
+            "file": "CHARGE.BIN",
+            "size": 256,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "CROSS.BIN",
+            "size": 2048,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "ESCORT.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "GAUGES.BIN",
+            "size": 4224,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "MARKS.BIN",
+            "size": 256,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "MERCHANT.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "MID.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "NUMBERS.BIN",
+            "size": 640,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "PROFESC.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "PROFMER.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "PROFTNK.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "PROFUBT.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "SCOPE.BIN",
+            "size": 4160,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "TANKER.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "TINY.BIN",
+            "size": 8192,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "UBOAT.BIN",
+            "size": 32768,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "WEAPONS.BIN",
+            "size": 4608,
+            "kind": "RM_SPRITE"
+          },
+          {
+            "list": "vram",
+            "file": "ZOOM.BIN",
+            "size": 2048,
+            "kind": "RM_SPRITE"
+          }
+        ],
+        "exporter": "pixel-cli export"
       }
     ],
     "sounds": [
@@ -158,16 +504,23 @@
         "type": "sounds",
         "doc": "assets/sounds/sfx.x16snd.json",
         "tool": "sound",
-        "exporter": "sound-cli export",
         "outputs": [
-          { "file": "build/gen/sfx_ids.h" },
-          { "file": "build/gen/sfx_sfx.h" }
+          {
+            "file": "build/gen/sfx_ids.h",
+            "bytes": 250
+          },
+          {
+            "file": "build/gen/sfx_sfx.h",
+            "bytes": 849
+          }
         ],
         "placement": {
           "target": "code",
           "loader": "sfx_sfx.h included from src/platform.c, then x16lib/sfx.h. Voice 0 is the drone and is not in this table."
-        }
+        },
+        "exporter": "sound-cli export"
       }
     ]
-  }
+  },
+  "notes": "One sprite document, assets/sprites/game.x16spr.json, holds every in-game sprite: chart hulls, bridge profiles, zoom steps, scopes, gauges, weapons, and marks. Pictures in this same project are the escort bow, the U-boat bow, the title card, and the credits card (assets/pictures). Sea tiles are assets/tiles/sea.x16tile.json. Palette is assets/palettes/main.x16pal.json. The plan is docs/game-plan.md."
 }

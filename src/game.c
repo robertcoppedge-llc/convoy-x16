@@ -110,56 +110,11 @@ static void vel(unsigned char hdg, int speed, int *vx, int *vy)
     *vy = -(speed * sdir[((hdg + 64) & 255) >> 3] / 16);
 }
 
-/* Eight rings left in the water. Each is the same wake sprite, and a turn
- * leaves them along the old track instead of spinning with the hull. */
-#define N_WAKE 8
-static int wake_x[N_WAKE];
-static int wake_y[N_WAKE];
-static unsigned char last_w[N_SHIP];
-static unsigned char wake_i;
-static unsigned char wake_n;
-
-static void wake_reset(void)
-{
-    unsigned char i;
-    wake_i = 0;
-    wake_n = 0;
-    for (i = 0; i < N_SHIP; i++) last_w[i] = 255;
-}
-
-static void wake_drop(void)
-{
-    unsigned char i;
-    for (i = 0; i < N_SHIP; i++) {
-        int dx, dy;
-        if (sunk[i] || ships[i].tel == TEL_STOP) continue;
-        if (i == UB && depth >= 8) continue;
-        if (last_w[i] != 255) {
-            dx = (int)(ships[i].x - wake_x[last_w[i]]);
-            dy = (int)(ships[i].y - wake_y[last_w[i]]);
-            if (dx < 192 && dx > -192 && dy < 192 && dy > -192) continue;
-        }
-        wake_x[wake_i] = ships[i].x;
-        wake_y[wake_i] = ships[i].y;
-        last_w[i] = wake_i;
-        wake_i = (unsigned char)((wake_i + 1) & (N_WAKE - 1));
-        if (wake_n < N_WAKE) wake_n++;
-    }
-}
-
 void game_water(unsigned char i, int *vx, int *vy)
 {
     unsigned char tel = ships[i].tel;
     if (i == UB && depth >= 8 && tel_fp[tel] > tel_fp[TEL_SLOW]) tel = TEL_SLOW;
     vel(ships[i].hdg, tel_fp[tel], vx, vy);
-}
-
-unsigned char game_wake_at(unsigned char n, int *x, int *y)
-{
-    if (n >= wake_n) return 0;
-    *x = wake_x[n];
-    *y = wake_y[n];
-    return 1;
 }
 
 static unsigned char heading_to(int dx, int dy)
@@ -273,7 +228,6 @@ void game_init(unsigned char uboat)
     /* Ahead and to port, outside radar, so the columns are not born on top of her. */
     ships[UB].x = CENTER_X - 280 * FP;
     ships[UB].y = CENTER_Y - 560 * FP;
-    wake_reset();
     for (i = 0; i < N_TORP; i++) torp[i].on = 0;
     for (i = 0; i < N_DC; i++) charge[i].on = 0;
 }
@@ -743,7 +697,6 @@ void game_tick(void)
         ships[i].y += vy - cvy;
         clamp_ship(&ships[i]);
     }
-    wake_drop();
     for (i = 0; i < N_TORP; i++) {
         unsigned char t;
         if (!torp[i].on) continue;

@@ -1,0 +1,12 @@
+{
+  "generator": "comfy-txt2picture",
+  "tool": "pixel-cli",
+  "source": ".x16/pixel/sources/credits/20261112-163454-s9.png",
+  "prompt": "pixel art night sea, one grey escort ship steaming away toward a pale horizon, dark water, quiet sky, high contrast, no text",
+  "negative": "text, letters, words, numbers, logo, watermark, signature, photorealistic, blurry",
+  "seed": 9,
+  "steps": 20,
+  "cfg": 7,
+  "model": "sd_xl_base_1.0_0.9vae.safetensors + Pixel_Art_SDXL.safetensors + pixelateX8VAEForSDXL_v10.safetensors",
+  "date": "2026-11-12"
+}

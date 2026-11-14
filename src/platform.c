@@ -21,6 +21,7 @@
 #include <x16lib/audio.h>
 #include <x16lib/display.h>
 #include <x16lib/fileio.h>
+#include <x16lib/cfgfile.h>
 #include <x16lib/bank.h>
 #include <x16lib/layers.h>
 #include <x16lib/vera.h>
@@ -30,21 +31,23 @@
 #include "game.h"
 #include "link.h"
 #include "platform.h"
+#include "resmap.h"
 
 /* phase_run is linked at $A000. phase_call selects bank 63, calls it, and restores. */
 BANK_WRAPPER_DECL(phase_call, 63);
 void phase_run(void);
 
-#define VRAM_TILES  0x00000UL
-#define VRAM_MAP    0x00400UL
-#define VRAM_MARKS  0x04000UL
-#define VRAM_HULL   0x05000UL
+/* Addresses and banks come from src/resmap.h. The names below are the ones the draw code uses. */
+#define VRAM_TILES  ((unsigned long)V_TILES_ADDR)
+#define VRAM_MAP    ((unsigned long)V_SEAMAP_ADDR)
+#define VRAM_MARKS  ((unsigned long)V_MARKS_ADDR)
+#define VRAM_HULL   ((unsigned long)V_HULL_ADDR)
 #define MAP_TILES   64
 #define MAP_PX      480
 #define MAP_MID     240
 #define HULL_B      2048u
-#define IDX_MARK    ((unsigned int)(VRAM_MARKS >> 5))
-#define IDX_HULL0   ((unsigned int)(VRAM_HULL >> 5))
+#define IDX_MARK    ((unsigned int)V_MARKS_SPR)
+#define IDX_HULL0   ((unsigned int)V_HULL_SPR)
 /* Packed sprite byte 7 from the library size codes. Palette stays in the low nibble. */
 #define PX8         SPR_B7(SPR_SIZE_8, SPR_SIZE_8, 0)
 #define PX16        SPR_B7(SPR_SIZE_16, SPR_SIZE_16, 0)
@@ -53,32 +56,26 @@ void phase_run(void);
 /* Between the layers, so an opaque hub cell covers a sprite and the
  * transparent map cells let the hulls show. */
 #define SPR_Z       SPR_B6(SPR_Z_BETWEEN_L0_L1, 0, 0, 0)
-#define VRAM_ZOOM   0x04200UL
-/* Between the sea map ($02400) and the crosshair ($03800). */
-#define VRAM_SCOPE  0x02400UL
-#define IDX_BEAM    ((unsigned int)(VRAM_SCOPE >> 5))
-#define IDX_FACE    ((unsigned int)((VRAM_SCOPE + 2048UL) >> 5))
-#define IDX_BLIP    ((unsigned int)((VRAM_SCOPE + 4096UL) >> 5))
-#define IDX_HOSTILE ((unsigned int)(IDX_BLIP + 4u))
-#define IDX_FOAM    ((unsigned int)((VRAM_SCOPE + 4352UL) >> 5))
-#define IDX_RING    ((unsigned int)(IDX_FOAM + 4u))
+#define VRAM_ZOOM   ((unsigned long)V_ZOOM_ADDR)
+#define VRAM_SCOPE  ((unsigned long)V_SCOPE_ADDR)
+#define IDX_BEAM    ((unsigned int)S_BEAM_SPR)
+#define IDX_FACE    ((unsigned int)S_FACE_SPR)
+#define IDX_BLIP    ((unsigned int)S_BLIP_SPR)
+#define IDX_HOSTILE ((unsigned int)S_HOSTILE_SPR)
 #define SPR_N       96
-#define BANK_ESCORT 1
-#define BANK_MERCH  5
-#define BANK_TANKER 9
-#define BANK_UBOAT  13
-#define BANK_WAKE   17
-#define BANK_MID    21
-#define BANK_MIDWAKE 25
-#define BANK_TINY   26
-#define BANK_TINYWAKE 27
-#define BANK_CHARGE 28
+#define BANK_ESCORT B_ESCORT
+#define BANK_MERCH  B_MERCH
+#define BANK_TANKER B_TANKER
+#define BANK_UBOAT  B_UBOAT
+#define BANK_MID    B_MID
+#define BANK_TINY   B_TINY
+#define BANK_CHARGE B_CHARGE
 /* Sixteen 64px profile aspects per kind. Four frames to a bank, same as the hulls.
  * The bridge and the glasses share them. Smaller copies, picked by range, follow. */
-#define BANK_PROF   29
-#define BANK_P32    45
-#define BANK_P16    49
-#define BANK_P8     50
+#define BANK_PROF   B_PROFESC
+#define BANK_P32    B_P32ESC
+#define BANK_P16    B_P16
+#define BANK_P8     B_P8
 #define HUB_BG      2
 #define VIEW_MAP    0
 #define VIEW_BRIDGE 1
@@ -86,24 +83,22 @@ void phase_run(void);
 #define VIEW_ROOM   3
 /* Bow picture on layer 1. 128x64 map of 8x8 tiles, then one atlas.
  * The atlas must end before the weapons at $18000. */
-#define VRAM_BOWMAP 0x10000UL
-#define VRAM_BOW    0x14000UL
-#define VRAM_WEAP   0x18000UL
-#define VRAM_DC     0x19200UL
-#define VRAM_GAUGE  0x19400UL
-#define VRAM_CROSS  0x03800UL
-#define VRAM_NUM    0x04C00UL
-#define IDX_EEL     ((unsigned int)(VRAM_WEAP >> 5))
-#define IDX_TWAKE   ((unsigned int)((VRAM_WEAP + 2048UL) >> 5))
-#define IDX_COLUMN  ((unsigned int)((VRAM_WEAP + 4096UL) >> 5))
-#define IDX_DC      ((unsigned int)(VRAM_DC >> 5))
-#define IDX_DIAL    ((unsigned int)(VRAM_GAUGE >> 5))
-#define IDX_NEEDLE  ((unsigned int)((VRAM_GAUGE + 2048UL) >> 5))
-#define IDX_LAMP    ((unsigned int)((VRAM_GAUGE + 6144UL) >> 5))
-#define IDX_CROSS   ((unsigned int)(VRAM_CROSS >> 5))
-#define IDX_ZWAKE   ((unsigned int)((VRAM_ZOOM + 2048UL) >> 5))
-#define IDX_NUM16   ((unsigned int)(VRAM_NUM >> 5))
-#define IDX_NUM8    ((unsigned int)((VRAM_NUM + 512UL) >> 5))
+#define VRAM_BOWMAP ((unsigned long)V_BOWMAP_ADDR)
+#define VRAM_BOW    ((unsigned long)V_BOW_ADDR)
+#define VRAM_WEAP   ((unsigned long)V_WEAP_ADDR)
+#define VRAM_DC     ((unsigned long)V_DC_ADDR)
+#define VRAM_GAUGE  ((unsigned long)V_GAUGE_ADDR)
+#define VRAM_CROSS  ((unsigned long)V_CROSS_ADDR)
+#define VRAM_NUM    ((unsigned long)V_NUM_ADDR)
+#define IDX_EEL     ((unsigned int)S_EEL_SPR)
+#define IDX_TWAKE   ((unsigned int)S_TWAKE_SPR)
+#define IDX_COLUMN  ((unsigned int)S_COLUMN_SPR)
+#define IDX_DC      ((unsigned int)V_DC_SPR)
+#define IDX_NEEDLE  ((unsigned int)S_NEEDLE_SPR)
+#define IDX_LAMP    ((unsigned int)S_LAMP_SPR)
+#define IDX_CROSS   ((unsigned int)V_CROSS_SPR)
+#define IDX_NUM16   ((unsigned int)S_NUM16_SPR)
+#define IDX_NUM8    ((unsigned int)S_NUM8_SPR)
 
 #define ST_TITLE 0
 #define ST_HOST  1
@@ -111,12 +106,24 @@ void phase_run(void);
 #define ST_PLAY  3
 #define ST_OVER  4
 #define ST_CREDITS 5
+#define ST_OPTS  6
+
+/* boot/CONVOY.CFG. Music is saved for when a title theme exists; nothing plays it yet.
+ * SFX gates the effect voices and the escort's engine drone. */
+typedef struct { config_hdr_t h; unsigned char music, sfx; } ConvCfg;
+static ConvCfg cfg = { CONFIG_HDR(1, ConvCfg), 1, 1 };
+#define CFG_FILE "convoy.cfg"
 
 /* phase.bin in bank 63. The op is what phase_run does on the next call. */
-#define BANK_SWAP 63
+#define BANK_SWAP B_PHASE
 #define OP_TITLE 1
 #define OP_CREDITS 2
 #define OP_GAME 3
+#define OP_UI 4
+#define UI_LOAD 1
+#define UI_TITLE 2
+#define UI_OPTS 3
+#define UI_CREDITS 4
 
 /* Sheets in banked RAM survive the title card. VRAM does not. */
 #define GOT_BANKS 0x01
@@ -526,13 +533,6 @@ static void draw_map(int camx, int camy)
                   -28 * sc, -6 * sc, nsz);
         }
     }
-    for (i = 0; i < 8; i++) {
-        int fx, fy;
-        if (game_wake_at(i, &fx, &fy))
-            place((unsigned char)(32 + i), IDX_RING, fx, fy, camx, camy, 0, 0, PX32);
-        else
-            write_sprite((unsigned char)(32 + i), 0, 0, 0, 0, 0);
-    }
     for (i = 0; i < N_TORP; i++) {
         unsigned char face;
         if (!game_torp_on(i)) {
@@ -551,7 +551,7 @@ static void draw_map(int camx, int camy)
               (int)astern_x[face] * 2, (int)astern_y[face] * 2, PX16);
     }
     for (i = 0; i < N_DC; i++) {
-        unsigned char life, face;
+        unsigned char life;
         unsigned int idx;
         unsigned char sz;
         int oy;
@@ -560,16 +560,15 @@ static void draw_map(int camx, int camy)
             continue;
         }
         life = game_dc_life(i);
-        face = (unsigned char)(game_dc_hdg(i) >> 4);
         game_dc_xy(i, &x, &y);
         oy = 0;
         sz = PX16;
         if (life > 21) {
-            blit_dc(i, (unsigned int)face * 128u);
+            blit_dc(i, 0);
             idx = (unsigned int)(IDX_DC + (unsigned int)i * 4u);
             oy = (int)(28 - life) * 5;
         } else if (life > 14) {
-            blit_dc(i, 2048u + (unsigned int)face * 128u);
+            blit_dc(i, 128u);
             idx = (unsigned int)(IDX_DC + (unsigned int)i * 4u);
         } else if (life > 8) {
             write_sprite((unsigned char)(26 + i), 0, 0, 0, 0, 0);
@@ -713,37 +712,42 @@ static void draw_ahead(int camx, int camy, unsigned char look)
         write_sprite(40, IDX_CROSS, 0, 0, 0, PX64);
 }
 
+static void scope_quad(unsigned char slot, int cx, int cy);
+
 static void draw_room(void)
 {
     unsigned char i, tubes, face;
     signed char pl;
+    int cx;
     write_sprite(40, IDX_CROSS, 0, 0, 0, PX64);
-    write_front(41, IDX_DIAL, 24, 32, PX64);
-    write_front(42, IDX_DIAL, 168, 32, PX64);
-    write_front(43, IDX_DIAL, 312, 32, PX64);
+    /* The same four-part face the chart scopes use. Three of them. */
+    for (i = 0; i < 3; i++) {
+        cx = 96 + (int)i * 176;
+        scope_quad((unsigned char)(41 + i * 4), cx, 96);
+    }
     face = (unsigned char)(ships[N_SHIP - 1].hdg >> 5);
-    write_front(44, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 40, 48, PX32);
+    write_front(53, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 80, 80, PX32);
     face = (unsigned char)((game_depth() * 7u) / 80u);
-    write_front(45, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 184, 48, PX32);
+    write_front(54, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 256, 80, PX32);
     pl = game_planes_of();
     face = (unsigned char)((pl + 2) * 2);
     if (face > 7) face = 7;
-    write_front(46, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 328, 48, PX32);
+    write_front(55, (unsigned int)(IDX_NEEDLE + (unsigned int)face * 16u), 432, 80, PX32);
     tubes = game_tubes();
     for (i = 0; i < 4; i++)
-        write_front((unsigned char)(47 + i),
-                    (unsigned int)(IDX_LAMP + (i < tubes ? 8u : 12u)),
-                    48 + (int)i * 40, 210, PX16);
+        write_front((unsigned char)(56 + i),
+                    (unsigned int)(IDX_LAMP + (i < tubes ? 2u : 3u)),
+                    64 + (int)i * 48, 200, PX8);
     for (i = 0; i < 8; i++)
-        write_front((unsigned char)(51 + i),
-                    (unsigned int)(IDX_LAMP + (game_battery() > (unsigned char)(i * 5) ? 0u : 4u)),
-                    48 + (int)i * 24, 310, PX16);
+        write_front((unsigned char)(60 + i),
+                    (unsigned int)(IDX_LAMP + (game_battery() > (unsigned char)(i * 5) ? 0u : 1u)),
+                    64 + (int)i * 24, 240, PX8);
     bgcolor(HUB_BG);
     textcolor(COLOR_WHITE);
-    cputcxy(23, 13, (char)('0' + (game_depth() / 10) % 10));
-    cputcxy(24, 13, (char)('0' + game_depth() % 10));
-    cputcxy(41, 13, (char)(pl < 0 ? '-' : '+'));
-    cputcxy(42, 13, (char)('0' + (pl < 0 ? -pl : pl)));
+    cputcxy(30, 22, (char)('0' + (game_depth() / 10) % 10));
+    cputcxy(31, 22, (char)('0' + game_depth() % 10));
+    cputcxy(52, 22, (char)(pl < 0 ? '-' : '+'));
+    cputcxy(53, 22, (char)('0' + (pl < 0 ? -pl : pl)));
 }
 
 static void draw_world(void)
@@ -901,7 +905,7 @@ static void scope_quad(unsigned char slot, int cx, int cy)
 
 static void scope_blip(unsigned char slot, unsigned int idx, unsigned char li, int cx, int cy, int r)
 {
-    scope_at(slot, idx, li, cx, cy, r, PX16, 8);
+    scope_at(slot, idx, li, cx, cy, r, PX8, 4);
 }
 
 static void draw_scopes(void)
@@ -928,7 +932,7 @@ static void draw_scopes(void)
         scope_ray(77, li, SCOPE_X, RADAR_Y, 30);
         scope_ray(78, li, SCOPE_X, RADAR_Y, 52);
         nblip = 0;
-        for (i = 0; i < N_SHIP && nblip < 8; i++) {
+        for (i = 0; i < N_SHIP && nblip < 4; i++) {
             if (i == focus || !game_alive(i)) continue;
             if (i == N_SHIP - 1 && game_depth() >= 8) continue;
             dx = (int)(((long)ships[i].x - ships[focus].x) / FP);
@@ -941,7 +945,7 @@ static void draw_scopes(void)
                        rel, SCOPE_X, RADAR_Y, rr);
             nblip++;
         }
-        while (nblip < 8) scope_hide((unsigned char)(68 + nblip++));
+        while (nblip < 4) scope_hide((unsigned char)(68 + nblip++));
     } else {
         for (i = 68; i < 79; i++) scope_hide(i);
     }
@@ -1076,6 +1080,8 @@ static unsigned char banks_ok(const char *name, unsigned char first, unsigned ch
         (unsigned char)(first + nbanks - 1), min, &n) == FILE_OK);
 }
 
+static unsigned char ui;
+
 static void phase_enter(void)
 {
     if (!phase_ready) {
@@ -1087,6 +1093,13 @@ static void phase_enter(void)
         phase_ready = 1;
     }
     phase_call(phase_run);
+}
+
+static void draw_ui(unsigned char which)
+{
+    ui = which;
+    phase_op = OP_UI;
+    phase_enter();
 }
 
 static void begin_match(unsigned char as, unsigned char linked)
@@ -1104,46 +1117,17 @@ static void begin_match(unsigned char as, unsigned char linked)
     view = VIEW_MAP;
     zoom = 0;
     show_bow(0);
-    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
-    layer_scroll(0, 0, 0);
+    /* The title picture stays up while the match files load. */
+    draw_ui(UI_LOAD);
     phase_op = OP_GAME;
     phase_enter();
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    layer_scroll(0, 0, 0);
     fill_sea();
     cache_clear();
     hub_forget();
     clear_screen();
     stage = ST_PLAY;
-}
-
-static void title_screen(void)
-{
-    bgcolor(HUB_BG);
-    textcolor(COLOR_WHITE);
-    cclearxy(0, 49, 80);
-    cclearxy(0, 50, 80);
-    cclearxy(0, 52, 80);
-    cclearxy(0, 54, 80);
-    cputsxy(2, 50, "1 ESCORT");
-    cputsxy(16, 50, "2 U-BOAT");
-    cputsxy(30, 50, "3 LINK");
-    cputsxy(2, 52, "T ");
-    cputs(boat_name(pick));
-    cputsxy(2, 54, "C CREDITS");
-    bgcolor(COLOR_BLACK);
-}
-
-static void credits_screen(void)
-{
-    bgcolor(HUB_BG);
-    textcolor(COLOR_WHITE);
-    cclearxy(0, 49, 80);
-    cclearxy(0, 50, 80);
-    cclearxy(0, 52, 80);
-    cclearxy(0, 54, 80);
-    cputsxy(2, 50, "CONVOY FOR THE COMMANDER X16");
-    cputsxy(2, 52, "ART AND CODE IN THIS PROJECT");
-    cputsxy(2, 54, "ANY KEY");
-    bgcolor(COLOR_BLACK);
 }
 
 static void host_screen(void)
@@ -1265,9 +1249,14 @@ static void play_tick(unsigned char helm, unsigned char uhelm)
     }
 
     game_tick();
-    if (snd_ping) { sfx_play(SFX_PING); snd_ping = 0; }
-    if (snd_boom) { sfx_play(SFX_BOOM); snd_boom = 0; }
-    if (snd_launch) { sfx_play(SFX_LAUNCH); snd_launch = 0; }
+    if (cfg.sfx) {
+        if (snd_ping) sfx_play(SFX_PING);
+        if (snd_boom) sfx_play(SFX_BOOM);
+        if (snd_launch) sfx_play(SFX_LAUNCH);
+    }
+    snd_ping = 0;
+    snd_boom = 0;
+    snd_launch = 0;
     sfx_tick();
     if (game_winner()) {
         stage = ST_OVER;
@@ -1299,6 +1288,7 @@ void plat_init(void)
     hide_sprites();
     audio_init();
     sfx_off();
+    config_load(CFG_FILE, &cfg);
     link_reset();
     pick = BOAT_VIIC;
     role = ROLE_ESCORT;
@@ -1312,14 +1302,16 @@ void plat_init(void)
     }
     game_init(pick);
     clear_screen();
+    draw_ui(UI_LOAD);
     phase_op = OP_TITLE;
     phase_enter();
     card = 1;
 #if CONVOY_SMOKE
     /* The smoke run never reaches a match, so prove the chart files open too. */
-    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    draw_ui(UI_LOAD);
     phase_op = OP_GAME;
     phase_enter();
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
     fill_sea();
 #endif
 }
@@ -1340,9 +1332,21 @@ void plat_frame(void)
             else if (k == '2') begin_match(ROLE_UBOAT, 0);
             else if (k == '3') { stage = ST_HOST; clear_screen(); }
             else if (k == 'c' || k == 'C') { stage = ST_CREDITS; card = 0; }
+            else if (k == 'o' || k == 'O') stage = ST_OPTS;
+            else if (k == 'q' || k == 'Q') { stage = ST_CREDITS; card = 0; }
             else if (k == 't' || k == 'T') {
                 pick = (unsigned char)((pick + 1) % BOAT_N);
                 game_set_uboat(pick);
+            }
+        } else if (stage == ST_OPTS) {
+            if (k == 27 || k == 3) stage = ST_TITLE;
+            else if (k == 'm' || k == 'M') {
+                cfg.music ^= 1;
+                config_save(CFG_FILE, &cfg);
+            } else if (k == 's' || k == 'S') {
+                cfg.sfx ^= 1;
+                if (!cfg.sfx) { sfx_off(); psg_stop_voice(0); }
+                config_save(CFG_FILE, &cfg);
             }
         } else if (stage == ST_HOST) {
             if (k == 27 || k == 3) { stage = ST_TITLE; clear_screen(); }
@@ -1387,7 +1391,7 @@ void plat_frame(void)
         }
     }
 
-    if (stage == ST_TITLE || stage == ST_HOST || stage == ST_DIAL) {
+    if (stage == ST_TITLE || stage == ST_OPTS || stage == ST_HOST || stage == ST_DIAL) {
         if (card != 1) {
             clear_screen();
             phase_op = OP_TITLE;
@@ -1402,11 +1406,15 @@ void plat_frame(void)
             phase_enter();
             card = 2;
         }
-        credits_screen();
+        draw_ui(UI_CREDITS);
+        return;
+    }
+    if (stage == ST_OPTS) {
+        draw_ui(UI_OPTS);
         return;
     }
     if (stage == ST_TITLE) {
-        title_screen();
+        draw_ui(UI_TITLE);
         return;
     }
     if (stage == ST_HOST) {
@@ -1437,9 +1445,13 @@ void plat_frame(void)
     /* Original helm rate: one tick every three blanks. Ship speed stays at
      * half the first demo, so a faster tick does not restore the old knots. */
     if ((step % 3) == 0) {
+        unsigned char was = game_depth();
         play_tick(helm, uhelm);
         helm = HELM_MID;
         uhelm = HELM_MID;
+        /* Leaving the surface puts the boat's player in the control room. */
+        if (game_player() == ROLE_UBOAT && was == 0 && game_depth() > 0)
+            set_view(VIEW_ROOM);
     }
     if (stage == ST_OVER) hud_over();
     else if (view == VIEW_MAP) hud_play();
@@ -1447,13 +1459,72 @@ void plat_frame(void)
     if (view == VIEW_MAP || stage == ST_OVER) draw_scopes();
     {
         unsigned int f = drone_f[ships[selected].tel];
-        if (!f || game_player() != ROLE_ESCORT) psg_stop_voice(0);
+        if (!cfg.sfx || !f || game_player() != ROLE_ESCORT) psg_stop_voice(0);
         else psg_set_voice(0, f, 28, PSG_WAVE_TRIANGLE, 32);
     }
 }
 
 #pragma code-name(push, "PHASECODE")
 #pragma rodata-name(push, "PHASECODE")
+
+static void menu_clear(void)
+{
+    bgcolor(HUB_BG);
+    textcolor(COLOR_WHITE);
+    cclearxy(0, 49, 80);
+    cclearxy(0, 50, 80);
+    cclearxy(0, 52, 80);
+    cclearxy(0, 54, 80);
+}
+
+static void on_off(unsigned char on)
+{
+    cputs(on ? " ON" : " OFF");
+}
+
+/* Title art is already on layer 0. This line is what the player sees while a file streams. */
+static void load_line(void)
+{
+    menu_clear();
+    cputsxy(2, 50, "LOADING");
+    bgcolor(COLOR_BLACK);
+}
+
+static void title_screen(void)
+{
+    menu_clear();
+    cputsxy(2, 49, "CONVOY");
+    cputsxy(2, 50, "1 START ESCORT");
+    cputsxy(22, 50, "2 START U-BOAT");
+    cputsxy(2, 52, "3 LINK");
+    cputsxy(16, 52, "T ");
+    cputs(boat_name(pick));
+    cputsxy(2, 54, "O OPTIONS");
+    cputsxy(16, 54, "C CREDITS");
+    cputsxy(30, 54, "Q QUIT");
+    bgcolor(COLOR_BLACK);
+}
+
+static void options_screen(void)
+{
+    menu_clear();
+    cputsxy(2, 49, "OPTIONS");
+    cputsxy(2, 50, "M MUSIC");
+    on_off(cfg.music);
+    cputsxy(22, 50, "S SFX");
+    on_off(cfg.sfx);
+    cputsxy(2, 54, "ESC BACK");
+    bgcolor(COLOR_BLACK);
+}
+
+static void credits_screen(void)
+{
+    menu_clear();
+    cputsxy(2, 50, "CONVOY FOR THE COMMANDER X16");
+    cputsxy(2, 52, "ART AND CODE IN THIS PROJECT");
+    cputsxy(2, 54, "ANY KEY");
+    bgcolor(COLOR_BLACK);
+}
 
 static void show_card(const char *name)
 {
@@ -1474,13 +1545,19 @@ void phase_run(void)
     case OP_CREDITS:
         show_card("credits.bin");
         break;
+    case OP_UI:
+        if (ui == UI_LOAD) load_line();
+        else if (ui == UI_TITLE) title_screen();
+        else if (ui == UI_OPTS) options_screen();
+        else credits_screen();
+        break;
     case OP_GAME:
         if (!(art & GOT_BANKS)) {
             if (!banks_ok("escort.bin", BANK_ESCORT, 4, 32768u) ||
                 !banks_ok("merchant.bin", BANK_MERCH, 4, 32768u) ||
                 !banks_ok("tanker.bin", BANK_TANKER, 4, 32768u) ||
                 !banks_ok("uboat.bin", BANK_UBOAT, 4, 32768u) ||
-                !banks_ok("charge.bin", BANK_CHARGE, 1, 4096u))
+                !banks_ok("charge.bin", BANK_CHARGE, 1, 256u))
                 gfx_ok = 0;
             else art = (unsigned char)(art | GOT_BANKS);
         }
@@ -1588,7 +1665,5 @@ void plat_smoke(void)
     cbm_k_chrout(13);
     if (gfx_ok && moved && hold && drift && sea == -40 && fired && attack)
         smoke_puts("convoy smoke ok\r");
-    else
-        smoke_puts("convoy smoke fail\r");
 }
 #endif
