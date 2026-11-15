@@ -2,6 +2,7 @@
 
 ## Done
 
+- Line endings are on the X16 standard (Robert's go, 2026-11-14 t665). `.gitattributes` is the lib's: `* text=auto eol=lf`, CRLF only for `*.cmd`, `*.bat` and `*.sln`, plus the binary lines. Everything was already stored as LF, so the renormalize changed no files; the working copy was checked out again so files on disk are LF too. `tools/write-balance.ps1` now writes `src/balance.h` with LF and UTF-8 without a BOM. `tools/pack_bows.py` writes only binary files.
 - Profile step-down is `pixel-cli lod` into `game.x16spr.json` (`p32-*`, `p16-*`, `p8-*`). The build only exports those sheets. `tools/pack_profiles.py` is gone. A check against the old bins matched byte for byte, including `PROFESC.BIN`. Run `lod` again only when the bridge art changes (the command is in `build-win.cmd`).
 - Title load line, options, and quit are in the game. Music is stored in `boot/CONVOY.CFG` and nothing plays it yet. Robert still has the section 7 call, per the manager's reply.
 
