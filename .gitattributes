@@ -1,0 +1,21 @@
+# Line endings: LF in the repository and on disk, whatever the OS or core.autocrlf.
+# CRLF only for files Windows itself needs that way. No per-file overrides.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.sln text eol=crlf
+
+# Binaries: never convert or diff as text.
+*.png binary
+*.gif binary
+*.jpg binary
+*.bin binary
+*.BIN binary
+*.prg binary
+*.PRG binary
+*.wav binary
+*.zsm binary
+*.mp3 binary
+*.pdf binary
+*.zip binary
+*.o binary

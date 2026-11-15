@@ -36,5 +36,6 @@ $rel = if ($b.header) { [string]$b.header } else { 'src/balance.h' }
 $path = Join-Path $root ($rel -replace '/', '\')
 $dir = Split-Path -Parent $path
 if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-$text = $sb.ToString().Replace("`n", "`r`n").Replace("`r`r`n", "`r`n")
-[System.IO.File]::WriteAllText($path, $text)
+# LF and UTF-8 without a BOM (X16 line-ending standard).
+$text = $sb.ToString().Replace("`r`n", "`n")
+[System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding $false))
