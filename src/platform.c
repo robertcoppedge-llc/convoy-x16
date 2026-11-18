@@ -404,7 +404,7 @@ static void show_bow(unsigned char on)
     if (on == bow_up) return;
     bow_up = on;
     if (on) {
-        layer_config_tile(1, VRAM_BOWMAP, VRAM_BOW, 2, 1, 8, 8, LAYER_BPP_4);
+        layer_config_tile(1, VRAM_BOWMAP, VRAM_BOW, LAYER_MAP_128, LAYER_MAP_64, 8, 8, LAYER_BPP_4);
         layer_scroll(1, 0, 0);
         return;
     }
@@ -1087,7 +1087,7 @@ static void phase_enter(void)
 {
     if (!phase_ready) {
         X16_RAM_BANK = BANK_SWAP;
-        if (file_load("phase.bin", FILE_TO_RAM, 0xA000) != FILE_OK) {
+        if (file_load("phase.bin", FILE_TO_RAM, X16_BANK_WIN) != FILE_OK) {
             gfx_ok = 0;
             return;
         }
@@ -1122,7 +1122,7 @@ static void begin_match(unsigned char as, unsigned char linked)
     draw_ui(UI_LOAD);
     phase_op = OP_GAME;
     phase_enter();
-    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, LAYER_MAP_64, LAYER_MAP_64, 16, 16, LAYER_BPP_4);
     layer_scroll(0, 0, 0);
     fill_sea();
     cache_clear();
@@ -1312,7 +1312,7 @@ void plat_init(void)
     draw_ui(UI_LOAD);
     phase_op = OP_GAME;
     phase_enter();
-    layer_config_tile(0, VRAM_MAP, VRAM_TILES, 1, 1, 16, 16, LAYER_BPP_4);
+    layer_config_tile(0, VRAM_MAP, VRAM_TILES, LAYER_MAP_64, LAYER_MAP_64, 16, 16, LAYER_BPP_4);
     fill_sea();
 #endif
 }
